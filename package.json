@@ -1,0 +1,63 @@
+{
+  "name": "nekocap-server",
+  "version": "0.5.0",
+  "description": "The NekoCap server",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nopol10/nekocap-server"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^0.20.0",
+    "compression": "^1.7.4",
+    "express": "~4.11.x",
+    "helmet": "^4.2.0",
+    "kerberos": "~0.0.x",
+    "lodash": "^4.17.20",
+    "parse": "~1.8.0",
+    "parse-server": "4.5.0",
+    "parse-server-firebase-auth": "^1.0.0",
+    "sanitize-filename": "^1.6.3"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "build": "webpack --config webpack.prod.js",
+    "docker:build": "cd .. && docker build --tag nekocapserver:latest -f server/Dockerfile . && cd ./server",
+    "watch": "concurrently \"webpack -w --config webpack.dev.js\" \"npm:dash\"",
+    "dash": "parse-dashboard --dev --config parse-dashboard-config.json",
+    "dash:live": "parse-dashboard --dev --config parse-dashboard-config-live.json"
+  },
+  "engines": {
+    "node": ">=10.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.11.6",
+    "@babel/core": "^7.11.6",
+    "@babel/plugin-transform-runtime": "^7.11.5",
+    "@babel/preset-env": "^7.11.5",
+    "@babel/preset-react": "^7.10.4",
+    "@babel/preset-typescript": "^7.10.4",
+    "@babel/runtime": "^7.11.2",
+    "@types/lodash": "^4.14.161",
+    "@types/node": "^14.10.3",
+    "@types/parse": "^2.12.5",
+    "babel-loader": "^8.2.1",
+    "concurrently": "^5.3.0",
+    "copy-webpack-plugin": "^6.1.1",
+    "dotenv": "^8.2.0",
+    "file-loader": "^6.2.0",
+    "fork-ts-checker-webpack-plugin": "^6.0.3",
+    "license-webpack-plugin": "^2.3.1",
+    "nodemon-webpack-plugin": "^4.3.2",
+    "prettier": "^2.1.1",
+    "terser-webpack-plugin": "^4.2.3",
+    "ts-loader": "^8.0.3",
+    "tsconfig-paths-webpack-plugin": "^3.3.0",
+    "typescript": "^4.0.2",
+    "webpack": "^4.44.1",
+    "webpack-cli": "^3.3.12",
+    "webpack-merge": "^5.1.4",
+    "webpack-node-externals": "^2.5.2"
+  }
+}

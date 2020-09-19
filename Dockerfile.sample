@@ -1,0 +1,32 @@
+FROM node:14.15.1-alpine3.12 as build
+
+RUN mkdir server
+RUN mkdir server/parse
+RUN mkdir project
+RUN mkdir project/src
+# Copy the frontend project for types
+COPY project/src /project/src
+COPY server /server
+WORKDIR /server
+RUN npm ci
+
+ARG DATABASE_URI
+ARG CLOUD_CODE_MAIN=./cloud.js
+
+RUN npm run build
+
+FROM node:14.15.1-alpine3.12 as nekocap-server
+RUN mkdir parse
+COPY --from=build /server/dist /parse
+COPY --from=build /server/node_modules /parse/node_modules
+
+ENV APP_ID='your app id here'
+ENV PROD=true
+ENV CLOUD_CODE_MAIN=./cloud.js
+ENV MASTER_KEY="your master key here"
+
+WORKDIR /parse
+
+EXPOSE 4041
+
+CMD [ "node", "index.js" ]
