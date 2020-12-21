@@ -5,6 +5,17 @@ import type {
 } from "@/common/providers/parse/types";
 import { getUserReadAdminACL, getUserReadAdminPublicACL } from "./acl";
 
+Parse.Cloud.beforeSave(Parse.User, function (request) {
+  const user = request.object;
+  if (!user.isNew()) {
+    return;
+  }
+  // Prevent users from signing up with their own username and password
+  if (!user.get("authData")) {
+    throw new Error("No authentication data provided");
+  }
+});
+
 Parse.Cloud.afterSave(Parse.User, function (request) {
   if (request.object.existed()) {
     return;
