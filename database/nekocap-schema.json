@@ -1,0 +1,295 @@
+[
+  {
+    "_id": "_User",
+    "objectId": "string",
+    "updatedAt": "date",
+    "createdAt": "date",
+    "username": "string",
+    "email": "string",
+    "emailVerified": "boolean",
+    "authData": "object",
+    "_metadata": {
+      "indexes": {
+        "_id_": { "_id": 1 },
+        "username_1": { "username": 1 },
+        "email_1": { "email": 1 },
+        "case_insensitive_email": { "email": 1 },
+        "case_insensitive_username": { "username": 1 }
+      },
+      "class_permissions": {
+        "get": { "*": true },
+        "find": {},
+        "count": {},
+        "create": { "*": true },
+        "update": { "*": true },
+        "delete": {},
+        "addField": {},
+        "protectedFields": { "*": ["email"] }
+      }
+    }
+  },
+  {
+    "_id": "_Role",
+    "objectId": "string",
+    "updatedAt": "date",
+    "createdAt": "date",
+    "name": "string",
+    "users": "relation<_User>",
+    "roles": "relation<_Role>",
+    "_metadata": {
+      "indexes": { "_id_": { "_id": 1 }, "name_1": { "name": 1 } },
+      "class_permissions": {
+        "get": { "*": true },
+        "find": { "*": true },
+        "count": { "*": true },
+        "create": {},
+        "update": {},
+        "delete": {},
+        "addField": {},
+        "protectedFields": { "*": [] }
+      }
+    }
+  },
+  {
+    "_id": "_Session",
+    "objectId": "string",
+    "updatedAt": "date",
+    "createdAt": "date",
+    "restricted": "boolean",
+    "user": "*_User",
+    "installationId": "string",
+    "sessionToken": "string",
+    "expiresAt": "date",
+    "createdWith": "object",
+    "_metadata": {
+      "indexes": { "_id_": { "_id": 1 } },
+      "class_permissions": {
+        "get": { "*": true },
+        "find": { "*": true },
+        "count": { "*": true },
+        "create": {},
+        "update": {},
+        "delete": {},
+        "addField": {},
+        "protectedFields": { "*": [] }
+      }
+    }
+  },
+  {
+    "_id": "videos",
+    "objectId": "string",
+    "updatedAt": "date",
+    "createdAt": "date",
+    "_metadata": {
+      "fields_options": {
+        "creatorId": { "required": false },
+        "language": { "required": false },
+        "name": { "required": false },
+        "source": { "required": false },
+        "sourceCreatorId": { "required": false },
+        "sourceId": { "required": false },
+        "subtitles": { "required": false, "defaultValue": {} },
+        "subtitleCount": { "required": false, "defaultValue": 0 }
+      },
+      "indexes": { "_id_": { "_id": 1 } },
+      "class_permissions": {
+        "get": { "*": true, "requiresAuthentication": true },
+        "find": { "*": true, "requiresAuthentication": true },
+        "count": { "*": true, "requiresAuthentication": true },
+        "create": {},
+        "update": {},
+        "delete": {},
+        "addField": {},
+        "protectedFields": { "*": [] }
+      }
+    },
+    "creatorId": "string",
+    "language": "string",
+    "name": "string",
+    "source": "string",
+    "sourceCreatorId": "string",
+    "sourceId": "string",
+    "captions": "object",
+    "captionCount": "number"
+  },
+  {
+    "_id": "captions",
+    "objectId": "string",
+    "updatedAt": "date",
+    "createdAt": "date",
+    "_metadata": {
+      "fields_options": {
+        "accurate": { "required": false, "defaultValue": 0 },
+        "content": { "required": false },
+        "creatorId": { "required": false },
+        "inaccurate": { "required": false },
+        "language": { "required": false },
+        "reports": { "required": false },
+        "teamId": { "required": false },
+        "videoId": { "required": false },
+        "videoSource": { "required": false },
+        "verified": { "required": false, "defaultValue": false },
+        "likes": { "required": false, "defaultValue": 0 },
+        "dislikes": { "required": false, "defaultValue": 0 },
+        "rejected": { "required": false, "defaultValue": false },
+        "tags": { "required": false, "defaultValue": [] },
+        "reviewHistory": { "required": false, "defaultValue": [] },
+        "rawContent": { "required": false },
+        "rawFile": { "required": false },
+        "translatedTitle": { "required": false }
+      },
+      "indexes": { "_id_": { "_id": 1 } },
+      "class_permissions": {
+        "get": { "*": true },
+        "find": { "*": true },
+        "count": { "*": true },
+        "create": {},
+        "update": {},
+        "delete": {},
+        "addField": {},
+        "protectedFields": { "*": [] }
+      }
+    },
+    "accurate": "number",
+    "content": "string",
+    "creatorId": "string",
+    "inaccurate": "number",
+    "language": "string",
+    "reports": "number",
+    "teamId": "string",
+    "videoId": "string",
+    "videoSource": "string",
+    "verified": "boolean",
+    "likes": "number",
+    "dislikes": "number",
+    "rejected": "boolean",
+    "tags": "array",
+    "reviewHistory": "array",
+    "rawContent": "string",
+    "rawFile": "file",
+    "translatedTitle": "string"
+  },
+  {
+    "_id": "captionComments",
+    "objectId": "string",
+    "updatedAt": "date",
+    "createdAt": "date",
+    "_metadata": {
+      "fields_options": {
+        "commenterId": { "required": false },
+        "message": { "required": false },
+        "subtitleId": { "required": false }
+      },
+      "class_permissions": {
+        "get": { "*": true },
+        "find": { "*": true },
+        "count": { "*": true },
+        "create": {},
+        "update": {},
+        "delete": {},
+        "addField": {},
+        "protectedFields": { "*": [] }
+      }
+    },
+    "commenterId": "string",
+    "message": "string",
+    "subtitleId": "string"
+  },
+  {
+    "_id": "captionLikes",
+    "objectId": "string",
+    "updatedAt": "date",
+    "createdAt": "date",
+    "_metadata": {
+      "fields_options": {
+        "userId": { "required": true },
+        "likes": { "required": false, "defaultValue": [] },
+        "dislikes": { "required": false, "defaultValue": [] }
+      },
+      "indexes": { "_id_": { "_id": 1 } },
+      "class_permissions": {
+        "get": { "*": true },
+        "find": { "*": true },
+        "count": { "*": true },
+        "create": { "requiresAuthentication": true },
+        "update": {},
+        "delete": {},
+        "addField": {},
+        "protectedFields": { "*": [] }
+      }
+    },
+    "userId": "string",
+    "likes": "array",
+    "dislikes": "array"
+  },
+  {
+    "_id": "captioner",
+    "objectId": "string",
+    "updatedAt": "date",
+    "createdAt": "date",
+    "_metadata": {
+      "fields_options": {
+        "name": { "required": false },
+        "profileMessage": { "required": false },
+        "recs": { "required": false, "defaultValue": 0 },
+        "teams": { "required": false },
+        "verified": { "required": false },
+        "userId": { "required": false },
+        "donationLink": { "required": false },
+        "languages": { "required": false },
+        "nameTag": { "required": true },
+        "subtitleCount": { "required": false, "defaultValue": 0 },
+        "banned": { "required": false, "defaultValue": false },
+        "lastSubmissionTime": { "required": false, "defaultValue": 0 }
+      },
+      "indexes": { "_id_": { "_id": 1 } },
+      "class_permissions": {
+        "get": { "*": true },
+        "find": { "*": true },
+        "count": { "*": true },
+        "create": { "requiresAuthentication": true },
+        "update": { "requiresAuthentication": true },
+        "delete": {},
+        "addField": {},
+        "protectedFields": { "*": [] }
+      }
+    },
+    "name": "string",
+    "profileMessage": "string",
+    "recs": "number",
+    "teams": "array",
+    "verified": "boolean",
+    "userId": "string",
+    "donationLink": "string",
+    "languages": "array",
+    "nameTag": "number",
+    "captionCount": "number",
+    "banned": "boolean",
+    "lastSubmissionTime": "number"
+  },
+  {
+    "_id": "captionerPrivate",
+    "objectId": "string",
+    "updatedAt": "date",
+    "createdAt": "date",
+    "_metadata": {
+      "fields_options": {
+        "email": { "required": false },
+        "subberId": { "required": false }
+      },
+      "indexes": { "_id_": { "_id": 1 } },
+      "class_permissions": {
+        "get": { "requiresAuthentication": true },
+        "find": { "requiresAuthentication": true },
+        "count": { "requiresAuthentication": true },
+        "create": { "requiresAuthentication": true },
+        "update": { "requiresAuthentication": true },
+        "delete": {},
+        "addField": {},
+        "protectedFields": { "*": [] }
+      }
+    },
+    "email": "string",
+    "captionerId": "string"
+  }
+]
