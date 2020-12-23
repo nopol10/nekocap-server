@@ -23,7 +23,7 @@
   "scripts": {
     "start": "node index.js",
     "build": "webpack --config webpack.prod.js",
-    "docker:build": "cd .. && docker build --tag nekocapserver:latest -f server/Dockerfile . && cd ./server",
+    "docker:build": "cd .. && docker build --tag nekocap-server:latest -f nekocap-server/Dockerfile . && cd ./nekocap-server",
     "watch": "concurrently \"webpack -w --config webpack.dev.js\" \"npm:dash\"",
     "dash": "parse-dashboard --dev --config parse-dashboard-config.json",
     "dash:live": "parse-dashboard --dev --config parse-dashboard-config-live.json"
