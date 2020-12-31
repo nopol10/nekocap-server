@@ -376,6 +376,7 @@ const captionToListFields = async (
     creatorName: captioner ? captioner.name : "",
     videoName,
     videoLanguage,
+    translatedTitle: sub.get("translatedTitle") || undefined,
     likes: sub.get("likes") || 0,
     dislikes: sub.get("dislikes") || 0,
     verified: sub.get("verified") || false,
