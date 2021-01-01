@@ -43,6 +43,7 @@ import {
   unixSeconds,
 } from "./utils";
 import { random } from "lodash";
+import { decompressFromBase64 } from "lz-string";
 import { getAdminACL, getPublicReadAdminReviewerACL } from "./acl";
 import "./hooks.ts";
 import type {
@@ -56,6 +57,7 @@ import { role } from "./roles";
 import { MAX_CAPTION_FILE_BYTES } from "@/common/feature/caption-editor/constants";
 import sanitizeFilename from "sanitize-filename";
 import { CAPTION_SUBMISSION_COOLDOWN, PARSE_CLASS } from "./constants";
+import { validateAss } from "./validator";
 /**
  * Load the list of captions available for a video
  */
@@ -237,6 +239,15 @@ Parse.Cloud.define(
         rawCaption && isAss(rawCaption.type) && rawCaption.data
           ? rawCaption.data
           : "";
+      if (
+        rawCaptionData &&
+        !validateAss(decompressFromBase64(rawCaptionData))
+      ) {
+        return {
+          status: "error",
+          error: "Invalid .ass/.ssa file",
+        };
+      }
       const stringifiedRawCaption = JSON.stringify(rawCaptionData);
       const captionContentLength = Buffer.byteLength(stringifiedCaption);
       const rawContentLength = Buffer.byteLength(stringifiedRawCaption);
