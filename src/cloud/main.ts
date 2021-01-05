@@ -58,6 +58,7 @@ import { MAX_CAPTION_FILE_BYTES } from "@/common/feature/caption-editor/constant
 import sanitizeFilename from "sanitize-filename";
 import { CAPTION_SUBMISSION_COOLDOWN, PARSE_CLASS } from "./constants";
 import { validateAss } from "./validator";
+import { getVideoByCaptionTitleQuery, getVideoByTitleQuery } from "./search";
 /**
  * Load the list of captions available for a video
  */
@@ -1208,55 +1209,33 @@ Parse.Cloud.define(
   ): Promise<VideoSearchResponse> => {
     const {
       title,
-      videoLanguageCode,
-      captionLanguageCode,
+      videoLanguageCode = "any",
+      captionLanguageCode = "any",
       limit,
       offset,
     } = request.params;
-    let videoQuery = new Parse.Query<VideoSchema>(PARSE_CLASS.videos);
     const searchRegex = new RegExp(escapeRegexInString(title), "i");
-    if (
-      captionLanguageCode &&
-      captionLanguageCode !== "any" &&
-      !captionLanguageCode.includes("_")
-    ) {
-      // We need to do a multi query with all the sub languages accounted for
-      const languageCodes = getRelatedLanguageCodes(captionLanguageCode);
-      videoQuery = Parse.Query.or(
-        ...languageCodes.map((language) => {
-          const query = new Parse.Query<VideoSchema>(PARSE_CLASS.videos);
-          query.greaterThan(`captions.${language}`, 0);
-          query
-            .matches("name", searchRegex)
-            .greaterThan("captionCount", 0)
-            .descending("updatedAt");
-          return query;
-        })
-      );
-    } else if (captionLanguageCode && captionLanguageCode !== "any") {
-      videoQuery.greaterThan(`captions.${captionLanguageCode}`, 0);
-    }
+    // Find videos where the name contains the search string
+    const videoQuery = getVideoByTitleQuery(
+      searchRegex,
+      captionLanguageCode,
+      videoLanguageCode
+    );
 
-    videoQuery
-      .matches("name", searchRegex)
-      .greaterThan("captionCount", 0)
+    const videosWithCaptionNames = await getVideoByCaptionTitleQuery(
+      searchRegex,
+      captionLanguageCode,
+      videoLanguageCode
+    );
+    const fullQuery = Parse.Query.or(
+      ...[videoQuery, videosWithCaptionNames].filter(Boolean)
+    )
       .descending("updatedAt")
       .limit(limit)
       .skip(offset);
-    if (videoLanguageCode && videoLanguageCode !== "any") {
-      if (!videoLanguageCode.includes("_")) {
-        // Find all videos with sublanguage codes that match the given code
-        const videoLanguageRegex = new RegExp(
-          `^${escapeRegexInString(videoLanguageCode)}($|_+.*)`,
-          "i"
-        );
-        videoQuery.matches("language", videoLanguageRegex);
-      } else {
-        videoQuery.equalTo("language", videoLanguageCode);
-      }
-    }
 
-    const videos = await videoQuery.find();
+    const videos = await fullQuery.find();
+
     return {
       status: "success",
       videos,
