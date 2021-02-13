@@ -16,6 +16,7 @@ import type {
   VideoSearchResponse,
   LoadCaptionForReviewResponse,
   PublicProfileResponse,
+  BrowseResponse,
 } from "@/common/providers/parse/types";
 import type {
   CaptionsRequest,
@@ -33,6 +34,7 @@ import type {
   ReviewActionDetails,
 } from "@/common/feature/caption-review/types";
 import type { SearchRequest } from "@/common/feature/search/types";
+import type { BrowseRequest } from "@/common/feature/public-dashboard/types";
 import {
   escapeRegexInString,
   getRelatedLanguageCodes,
@@ -1231,15 +1233,15 @@ Parse.Cloud.define(
       ...[videoQuery, videosWithCaptionNames].filter(Boolean)
     )
       .descending("updatedAt")
-      .limit(limit)
+      .limit(limit + 1)
       .skip(offset);
 
     const videos = await fullQuery.find();
 
     return {
       status: "success",
-      videos,
-      hasMoreResults: videos.length >= limit,
+      videos: videos.slice(0, limit),
+      hasMoreResults: videos.length > limit,
     };
   }
 );
@@ -1298,6 +1300,37 @@ Parse.Cloud.define(
 
     return {
       status: "success",
+    };
+  }
+);
+
+/**
+ * Browse captions
+ */
+Parse.Cloud.define(
+  "browse",
+  async (
+    request: Parse.Cloud.FunctionRequest<BrowseRequest>
+  ): Promise<BrowseResponse> => {
+    const { limit, offset } = request.params;
+
+    const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
+    query.notEqualTo("rejected", true);
+    query
+      .limit(limit + 1)
+      .skip(offset)
+      .descending("createdAt");
+    const captions = await query.find();
+    const outputSubs: CaptionListFields[] = await Promise.all(
+      captions.map(async (sub) => {
+        return await captionToListFields(sub);
+      })
+    );
+
+    return {
+      status: "success",
+      captions: outputSubs.slice(0, limit),
+      hasMoreResults: captions.length > limit,
     };
   }
 );
