@@ -64,41 +64,38 @@ import { getVideoByCaptionTitleQuery, getVideoByTitleQuery } from "./search";
 /**
  * Load the list of captions available for a video
  */
-Parse.Cloud.define(
-  "findCaptions",
-  async (request): Promise<LoadCaptionsResult[]> => {
-    const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
-    query
-      .notEqualTo("rejected", true)
-      .equalTo("videoId", request.params.videoId)
-      .equalTo("videoSource", request.params.videoSource.toString());
-    const results = await query.find();
-    return await Promise.all(
-      results.map(async (result) => {
-        const userQuery = new Parse.Query<CaptionerSchema>(
-          PARSE_CLASS.captioner
-        );
-        userQuery.equalTo("userId", result.get("creatorId"));
-        const userResult = await userQuery.find();
-        let username = "";
-        // Checking the results in case the captioner has somehow been deleted
-        if (userResult.length > 0) {
-          username = userResult[0].get("name");
-        }
+Parse.Cloud.define("findCaptions", async (request): Promise<
+  LoadCaptionsResult[]
+> => {
+  const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
+  query
+    .notEqualTo("rejected", true)
+    .equalTo("videoId", request.params.videoId)
+    .equalTo("videoSource", request.params.videoSource.toString());
+  const results = await query.find();
+  return await Promise.all(
+    results.map(async (result) => {
+      const userQuery = new Parse.Query<CaptionerSchema>(PARSE_CLASS.captioner);
+      userQuery.equalTo("userId", result.get("creatorId"));
+      const userResult = await userQuery.find();
+      let username = "";
+      // Checking the results in case the captioner has somehow been deleted
+      if (userResult.length > 0) {
+        username = userResult[0].get("name");
+      }
 
-        return <LoadCaptionsResult>{
-          id: result.id,
-          captionerName: username,
-          verified: result.get("verified") || false,
-          likes: result.get("likes") || 0,
-          dislikes: result.get("dislikes") || 0,
-          languageCode: result.get("language"),
-          tags: result.get("tags") || [],
-        };
-      })
-    );
-  }
-);
+      return <LoadCaptionsResult>{
+        id: result.id,
+        captionerName: username,
+        verified: result.get("verified") || false,
+        likes: result.get("likes") || 0,
+        dislikes: result.get("dislikes") || 0,
+        languageCode: result.get("language"),
+        tags: result.get("tags") || [],
+      };
+    })
+  );
+});
 
 const loadRawCaptionData = async (caption: CaptionSchema): Promise<string> => {
   const file: Parse.File | undefined = caption.get("rawFile");
@@ -157,12 +154,21 @@ const loadCaption = async (
     type: rawCaptionMeta.type,
     data: "",
   };
+
+  const [video, captioner] = await Promise.all([
+    loadVideo(caption.get("videoId"), caption.get("videoSource")),
+    getUserProfile(caption.get("creatorId")),
+  ]);
+  const originalTitle = video ? video.get("name") : "";
+  const captionerName = captioner.name;
   // Get like and dislike data if user is logged in
   if (!user || !user.getSessionToken()) {
     return {
       caption,
       rawCaption: JSON.stringify(rawCaption),
       rawCaptionUrl: rawCaptionUrl,
+      originalTitle,
+      captionerName,
     };
   }
 
@@ -175,13 +181,25 @@ const loadCaption = async (
   const likesObjects = await likesQuery.find({ sessionToken });
   let likesObject: CaptionLikesSchema;
   if (!likesObjects || likesObjects.length <= 0) {
-    return { caption, rawCaptionUrl: rawCaptionUrl };
+    return {
+      caption,
+      rawCaptionUrl: rawCaptionUrl,
+      originalTitle,
+      captionerName,
+    };
   }
   likesObject = likesObjects[0];
   const userLike = (likesObject.get("likes") || []).includes(captionId);
   const userDislike = (likesObject.get("dislikes") || []).includes(captionId);
 
-  return { caption, rawCaptionUrl: rawCaptionUrl, userLike, userDislike };
+  return {
+    caption,
+    rawCaptionUrl: rawCaptionUrl,
+    userLike,
+    userDislike,
+    originalTitle,
+    captionerName,
+  };
 };
 
 const loadVideo = async (videoId: string, videoSource: string) => {
@@ -230,12 +248,8 @@ Parse.Cloud.define(
           error: `You cannot submit another caption yet. Please wait at least 5 minutes after a submission before submitting again.`,
         };
       }
-      const {
-        caption,
-        rawCaption,
-        video,
-        hasAudioDescription,
-      } = request.params;
+      const { caption, rawCaption, video, hasAudioDescription } =
+        request.params;
       const stringifiedCaption = JSON.stringify(caption.data);
       // We only want to store the raws of ass captions
       const rawCaptionData =
