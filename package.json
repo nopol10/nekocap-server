@@ -20,7 +20,8 @@
     "parse": "^2.19.0",
     "parse-server": "4.5.0",
     "parse-server-firebase-auth": "^1.0.0",
-    "sanitize-filename": "^1.6.3"
+    "sanitize-filename": "^1.6.3",
+    "youtube-dl-exec": "^1.2.4"
   },
   "scripts": {
     "start": "node index.js",
