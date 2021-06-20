@@ -48,6 +48,7 @@ import { random } from "lodash";
 import { decompressFromBase64 } from "lz-string";
 import { getAdminACL, getPublicReadAdminReviewerACL } from "./acl";
 import "./hooks.ts";
+import "./video-apis.ts";
 import type {
   CaptionFileFormat,
   ServerResponse,
