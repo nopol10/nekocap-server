@@ -16,7 +16,8 @@ type YtResponseWithCaptions = {
 
 const convertYoutubeCaptionListToNekoCapList = (
   captionList: YtCaptionList,
-  suffix: string = ""
+  suffix: string = "",
+  isAutomaticCaption: boolean = false
 ) => {
   return Object.keys(captionList)
     .map((language: keyof typeof languages) => {
@@ -31,6 +32,7 @@ const convertYoutubeCaptionListToNekoCapList = (
         id: item.url,
         language: language,
         name: (languages[language] || baseLanguages[language]) + suffix,
+        isAutomaticCaption,
       };
     })
     .filter(Boolean);
@@ -66,14 +68,15 @@ Parse.Cloud.define(
         ...captions,
         ...convertYoutubeCaptionListToNekoCapList(
           automatic_captions,
-          " (Auto)"
+          " (Auto)",
+          true
         ),
       ];
     }
     if (subtitles && Object.keys(subtitles).length > 0) {
       captions = [
         ...captions,
-        ...convertYoutubeCaptionListToNekoCapList(subtitles),
+        ...convertYoutubeCaptionListToNekoCapList(subtitles, "", false),
       ];
     }
     captions.sort((captionA, captionB) =>
