@@ -57,7 +57,10 @@ import type {
 import { isAss } from "@/common/caption-utils";
 import { captionTags } from "@/common/constants";
 import { role } from "./roles";
-import { MAX_CAPTION_FILE_BYTES } from "@/common/feature/caption-editor/constants";
+import {
+  MAX_CAPTION_FILE_BYTES,
+  MAX_VERIFIED_CAPTION_FILE_BYTES,
+} from "@/common/feature/caption-editor/constants";
 import sanitizeFilename from "sanitize-filename";
 import { CAPTION_SUBMISSION_COOLDOWN, PARSE_CLASS } from "./constants";
 import { validateAss } from "./validator";
@@ -65,38 +68,41 @@ import { getVideoByCaptionTitleQuery, getVideoByTitleQuery } from "./search";
 /**
  * Load the list of captions available for a video
  */
-Parse.Cloud.define("findCaptions", async (request): Promise<
-  LoadCaptionsResult[]
-> => {
-  const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
-  query
-    .notEqualTo("rejected", true)
-    .equalTo("videoId", request.params.videoId)
-    .equalTo("videoSource", request.params.videoSource.toString());
-  const results = await query.find();
-  return await Promise.all(
-    results.map(async (result) => {
-      const userQuery = new Parse.Query<CaptionerSchema>(PARSE_CLASS.captioner);
-      userQuery.equalTo("userId", result.get("creatorId"));
-      const userResult = await userQuery.find();
-      let username = "";
-      // Checking the results in case the captioner has somehow been deleted
-      if (userResult.length > 0) {
-        username = userResult[0].get("name");
-      }
+Parse.Cloud.define(
+  "findCaptions",
+  async (request): Promise<LoadCaptionsResult[]> => {
+    const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
+    query
+      .notEqualTo("rejected", true)
+      .equalTo("videoId", request.params.videoId)
+      .equalTo("videoSource", request.params.videoSource.toString());
+    const results = await query.find();
+    return await Promise.all(
+      results.map(async (result) => {
+        const userQuery = new Parse.Query<CaptionerSchema>(
+          PARSE_CLASS.captioner
+        );
+        userQuery.equalTo("userId", result.get("creatorId"));
+        const userResult = await userQuery.find();
+        let username = "";
+        // Checking the results in case the captioner has somehow been deleted
+        if (userResult.length > 0) {
+          username = userResult[0].get("name");
+        }
 
-      return <LoadCaptionsResult>{
-        id: result.id,
-        captionerName: username,
-        verified: result.get("verified") || false,
-        likes: result.get("likes") || 0,
-        dislikes: result.get("dislikes") || 0,
-        languageCode: result.get("language"),
-        tags: result.get("tags") || [],
-      };
-    })
-  );
-});
+        return <LoadCaptionsResult>{
+          id: result.id,
+          captionerName: username,
+          verified: result.get("verified") || false,
+          likes: result.get("likes") || 0,
+          dislikes: result.get("dislikes") || 0,
+          languageCode: result.get("language"),
+          tags: result.get("tags") || [],
+        };
+      })
+    );
+  }
+);
 
 const loadRawCaptionData = async (caption: CaptionSchema): Promise<string> => {
   const file: Parse.File | undefined = caption.get("rawFile");
@@ -259,6 +265,9 @@ Parse.Cloud.define(
           : "";
       if (
         rawCaptionData &&
+        // Skip validation of ass files for verified users
+        // Some complex files can have invalid data but still work
+        !verified &&
         !validateAss(decompressFromBase64(rawCaptionData))
       ) {
         return {
@@ -269,9 +278,12 @@ Parse.Cloud.define(
       const stringifiedRawCaption = JSON.stringify(rawCaptionData);
       const captionContentLength = Buffer.byteLength(stringifiedCaption);
       const rawContentLength = Buffer.byteLength(stringifiedRawCaption);
+      const allowedFileSize = verified
+        ? MAX_VERIFIED_CAPTION_FILE_BYTES
+        : MAX_CAPTION_FILE_BYTES;
       if (
-        captionContentLength > MAX_CAPTION_FILE_BYTES ||
-        rawContentLength > MAX_CAPTION_FILE_BYTES
+        captionContentLength > allowedFileSize ||
+        rawContentLength > allowedFileSize
       ) {
         throw new Error("Captions exceed size limit!");
       }
