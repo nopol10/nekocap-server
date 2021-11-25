@@ -151,6 +151,7 @@ const loadCaption = async (
   if (!caption) {
     return undefined;
   }
+  caption.increment("views");
   // We'll send the url back and let the client retrieve it
   // We cannot get the file inside cloud code when it is running in docker as the file's url contains under the server's public IP.
   // Connecting to a docker host's public IP from inside a docker container running in that host leads to a timeout
@@ -162,9 +163,10 @@ const loadCaption = async (
     data: "",
   };
 
-  const [video, captioner] = await Promise.all([
+  const [video, captioner, _] = await Promise.all([
     loadVideo(caption.get("videoId"), caption.get("videoSource")),
     getUserProfile(caption.get("creatorId")),
+    caption.save(null, { useMasterKey: true }),
   ]);
   const originalTitle = video ? video.get("name") : "";
   const captionerName = captioner.name;
