@@ -307,7 +307,7 @@ Parse.Cloud.define(
       ) {
         throw new Error("Missing information in submitted caption!");
       }
-      videoId = videoId.substring(0, 40);
+      videoId = videoId.substring(0, 256);
       const videoSourceString = videoSource.toString().substring(0, 2);
       captionLanguageCode = captionLanguageCode.substring(0, 20);
       translatedTitle = translatedTitle.substring(0, 128);
