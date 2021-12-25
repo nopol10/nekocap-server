@@ -89,3 +89,7 @@ export const hasReviewerRole = async (user: Parse.User): Promise<boolean> => {
 export const escapeRegexInString = (inString: string) => {
   return inString.replace(/[#-.]|[[-^]|[?|{}]/g, "\\$&");
 };
+
+export const isUndefinedOrNull = (value: any): boolean => {
+  return value === undefined || value === null;
+};

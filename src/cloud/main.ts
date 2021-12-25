@@ -3,6 +3,7 @@ import type {
   SubmitCaptionRequest,
   CaptionListFields,
   RawCaptionData,
+  UpdateCaptionRequest,
 } from "@/common/feature/video/types";
 import type { LoadProfileParams } from "@/common/feature/profile/types";
 import type {
@@ -42,6 +43,7 @@ import {
   hasAdminRole,
   hasReviewerManagerRole,
   hasReviewerRole,
+  isUndefinedOrNull,
   unixSeconds,
 } from "./utils";
 import { random } from "lodash";
@@ -381,6 +383,146 @@ Parse.Cloud.define(
         newCaption.set("rawFile", rawFile);
         await newCaption.save(null, { useMasterKey: true });
       }
+    } catch (e) {
+      return { status: "error", error: e.message };
+    }
+    return { status: "success" };
+  }
+);
+
+Parse.Cloud.define(
+  "updateCaption",
+  async (
+    request: Parse.Cloud.FunctionRequest<UpdateCaptionRequest>
+  ): Promise<UploadResponse> => {
+    const { user } = request;
+    if (!user || !user.getSessionToken()) {
+      return { status: "error", error: "Not authorized! Please login" };
+    }
+    try {
+      const { banned, verified } = await getUserProfile(user.id);
+      if (banned) {
+        return { status: "error", error: "Not authorized! You are banned!" };
+      }
+      const {
+        captionId,
+        rawCaption: newRawCaption,
+        captionData: newCaptionData,
+        hasAudioDescription: newHasAudioDescription,
+        translatedTitle: newTranslatedTitle,
+      } = request.params;
+      if (!captionId) {
+        return { status: "error", error: "Missing caption id!" };
+      }
+      if (
+        isUndefinedOrNull(newRawCaption) &&
+        isUndefinedOrNull(newCaptionData) &&
+        isUndefinedOrNull(newHasAudioDescription) &&
+        isUndefinedOrNull(newTranslatedTitle)
+      ) {
+        // Nothing needs to be updated
+        return { status: "error", error: "Nothing to update" };
+      }
+      if (newRawCaption && newCaptionData) {
+        return { status: "error", error: "Too many caption types supplied" };
+      }
+      const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
+      query.equalTo("objectId", captionId);
+      query.equalTo("creatorId", user.id);
+      const result = await query.first();
+      if (!result) {
+        return { status: "error", error: "No such caption" };
+      }
+      // Check whether we need to delete any raw file if the caption was raw and is now not.
+      const existingRawFile: Parse.File = result.get("rawFile");
+      // If there's no raw caption after the update or the existing raw caption will be overwritten
+      // delete the raw file
+      if (
+        (existingRawFile && newCaptionData && !newRawCaption) ||
+        (existingRawFile && newRawCaption)
+      ) {
+        try {
+          await existingRawFile.destroy();
+        } catch (e) {
+          console.warn(
+            `[updateCaption] Failed to delete existing raw file for caption: ${captionId}`
+          );
+        }
+        result.set("rawFile", null);
+        result.set("rawContent", null);
+      }
+      if (newRawCaption) {
+        result.set("content", JSON.stringify({ tracks: [] }));
+      }
+
+      const stringifiedCaption = JSON.stringify(newCaptionData || {});
+      // We only want to store the raws of ass captions
+      const rawCaptionData =
+        newRawCaption && isAss(newRawCaption.type) && newRawCaption.data
+          ? newRawCaption.data
+          : "";
+      if (
+        rawCaptionData &&
+        // Skip validation of ass files for verified users
+        // Some complex files can have invalid data but still work
+        !verified &&
+        !validateAss(decompressFromBase64(rawCaptionData))
+      ) {
+        return {
+          status: "error",
+          error: "Invalid .ass/.ssa file",
+        };
+      }
+      const stringifiedRawCaption = JSON.stringify(rawCaptionData);
+      const captionContentLength = Buffer.byteLength(stringifiedCaption);
+      const rawContentLength = Buffer.byteLength(stringifiedRawCaption);
+      const allowedFileSize = verified
+        ? MAX_VERIFIED_CAPTION_FILE_BYTES
+        : MAX_CAPTION_FILE_BYTES;
+      if (
+        captionContentLength > allowedFileSize ||
+        rawContentLength > allowedFileSize
+      ) {
+        throw new Error("Captions exceed size limit!");
+      }
+      // Sanitize the input data a little just in case
+      // TODO: refactor sanitization code
+      let modifiedTranslatedTitle = !!newTranslatedTitle
+        ? newTranslatedTitle.substring(0, 128)
+        : result.get("translatedTitle");
+
+      // Create the corresponding video object for this element
+
+      const tags: string[] = [];
+      if (!isUndefinedOrNull(newHasAudioDescription)) {
+        if (newHasAudioDescription) tags.push(captionTags.audioDescribed);
+        result.set("tags", tags);
+      }
+
+      result.set("translatedTitle", modifiedTranslatedTitle);
+      if (newCaptionData) {
+        result.set("content", stringifiedCaption);
+      }
+      await result.save(null, { useMasterKey: true });
+
+      if (newRawCaption && result.id) {
+        let rawCaptionMeta = "";
+        newRawCaption.data = "";
+        rawCaptionMeta = JSON.stringify(newRawCaption);
+        // Save the raw caption's data to a file
+        let rawFile: Parse.File = new Parse.File(
+          sanitizeFilename(`${result.id}`),
+          {
+            // The raw data should already have been base64 compressed on the client's side
+            base64: rawCaptionData,
+          }
+        );
+        await rawFile.save();
+        result.set("rawContent", rawCaptionMeta);
+        result.set("rawFile", rawFile);
+        await result.save(null, { useMasterKey: true });
+      }
+      console.log("Updated caption id by", user.id, ":", result.id);
     } catch (e) {
       return { status: "error", error: e.message };
     }
