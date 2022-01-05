@@ -62,6 +62,7 @@ import { role } from "./roles";
 import {
   MAX_CAPTION_FILE_BYTES,
   MAX_VERIFIED_CAPTION_FILE_BYTES,
+  MAX_VIDEO_TITLE_LENGTH,
 } from "@/common/feature/caption-editor/constants";
 import sanitizeFilename from "sanitize-filename";
 import { CAPTION_SUBMISSION_COOLDOWN, PARSE_CLASS } from "./constants";
@@ -312,7 +313,7 @@ Parse.Cloud.define(
       videoId = videoId.substring(0, 256);
       const videoSourceString = videoSource.toString().substring(0, 2);
       captionLanguageCode = captionLanguageCode.substring(0, 20);
-      translatedTitle = translatedTitle.substring(0, 128);
+      translatedTitle = translatedTitle.substring(0, MAX_VIDEO_TITLE_LENGTH);
 
       videoLanguageCode = (videoLanguageCode || "").substring(0, 20);
 
@@ -488,7 +489,7 @@ Parse.Cloud.define(
       // Sanitize the input data a little just in case
       // TODO: refactor sanitization code
       let modifiedTranslatedTitle = !!newTranslatedTitle
-        ? newTranslatedTitle.substring(0, 128)
+        ? newTranslatedTitle.substring(0, MAX_VIDEO_TITLE_LENGTH)
         : result.get("translatedTitle");
 
       // Create the corresponding video object for this element
