@@ -245,11 +245,17 @@ Parse.Cloud.define(
       return { status: "error", error: "Not authorized! Please login" };
     }
     try {
-      const { banned, verified, lastSubmissionTime } = await getUserProfile(
-        user.id
-      );
+      const { banned, verified, lastSubmissionTime, name } =
+        await getUserProfile(user.id);
       if (banned) {
         return { status: "error", error: "Not authorized! You are banned!" };
+      }
+      if (!name) {
+        return {
+          status: "error",
+          error:
+            "Complete your profile by opening the extension in your browser before submitting a caption!",
+        };
       }
       if (
         !verified &&
