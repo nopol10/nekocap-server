@@ -54,6 +54,15 @@ export const getVideoByTitleQuery = (
   return videoQuery;
 };
 
+export const getVideoByVideoIdQuery = (title: RegExp) => {
+  let videoQuery = new Parse.Query<VideoSchema>(PARSE_CLASS.videos);
+  videoQuery
+    .matches("sourceId", title)
+    .greaterThan("captionCount", 0)
+    .descending("updatedAt");
+  return videoQuery;
+};
+
 export const getVideoByCaptionTitleQuery = async (
   title: RegExp,
   captionLanguageCode: string,

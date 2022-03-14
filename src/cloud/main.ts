@@ -67,7 +67,11 @@ import {
 import sanitizeFilename from "sanitize-filename";
 import { CAPTION_SUBMISSION_COOLDOWN, PARSE_CLASS } from "./constants";
 import { validateAss } from "./validator";
-import { getVideoByCaptionTitleQuery, getVideoByTitleQuery } from "./search";
+import {
+  getVideoByCaptionTitleQuery,
+  getVideoByTitleQuery,
+  getVideoByVideoIdQuery,
+} from "./search";
 /**
  * Load the list of captions available for a video
  */
@@ -1410,8 +1414,12 @@ Parse.Cloud.define(
       captionLanguageCode,
       videoLanguageCode
     );
+    const videosWithVideoIdQuery = await getVideoByVideoIdQuery(searchRegex);
+
     const fullQuery = Parse.Query.or(
-      ...[videoQuery, videosWithCaptionNames].filter(Boolean)
+      ...[videoQuery, videosWithCaptionNames, videosWithVideoIdQuery].filter(
+        Boolean
+      )
     )
       .descending("updatedAt")
       .limit(limit + 1)
