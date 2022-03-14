@@ -85,7 +85,8 @@ Parse.Cloud.define(
         const userQuery = new Parse.Query<CaptionerSchema>(
           PARSE_CLASS.captioner
         );
-        userQuery.equalTo("userId", result.get("creatorId"));
+        const captionerId = result.get("creatorId");
+        userQuery.equalTo("userId", captionerId);
         const userResult = await userQuery.find();
         let username = "";
         // Checking the results in case the captioner has somehow been deleted
@@ -95,6 +96,7 @@ Parse.Cloud.define(
 
         return <LoadCaptionsResult>{
           id: result.id,
+          captionerId,
           captionerName: username,
           verified: result.get("verified") || false,
           likes: result.get("likes") || 0,
