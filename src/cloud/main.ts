@@ -318,6 +318,7 @@ Parse.Cloud.define(
         !translatedTitle ||
         !captionLanguageCode ||
         videoId === undefined ||
+        videoId.length <= 0 ||
         videoSource === undefined
       ) {
         throw new Error("Missing information in submitted caption!");
