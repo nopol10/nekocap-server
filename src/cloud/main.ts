@@ -316,6 +316,7 @@ Parse.Cloud.define(
       let { name: videoName, languageCode: videoLanguageCode } = video;
       if (
         !translatedTitle ||
+        !videoLanguageCode ||
         !captionLanguageCode ||
         videoId === undefined ||
         videoId.length <= 0 ||
