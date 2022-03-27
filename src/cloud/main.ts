@@ -178,7 +178,7 @@ const loadCaption = async (
     caption.save(null, { useMasterKey: true }),
   ]);
   const originalTitle = video ? video.get("name") : "";
-  const captionerName = captioner.name;
+  const captionerName = captioner?.name ?? "Unknown";
   // Get like and dislike data if user is logged in
   if (!user || !user.getSessionToken()) {
     return {
