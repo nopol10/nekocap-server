@@ -3,6 +3,7 @@ import { GetAutoCaptionListParams } from "@/common/feature/caption-editor/types"
 import { VideoSource } from "@/common/feature/video/types";
 import {
   CaptionerPrivateSchema,
+  CaptionerSchema,
   VideoSchema,
 } from "@/common/providers/parse/types";
 import { getPublicReadAdminReviewerACL } from "./acl";
@@ -163,17 +164,47 @@ Parse.Cloud.define(
       }
       captionerId = captionerPrivate.get("captionerId");
     }
+
     const Caption = Parse.Object.extend(PARSE_CLASS.captions);
+    const videoSource = VideoSource.Youtube.toString();
     const newCaption = new Caption();
     newCaption.set("creatorId", captionerId);
     newCaption.set("language", languageCode);
     newCaption.set("videoId", videoId);
-    newCaption.set("videoSource", VideoSource.Youtube.toString());
+    newCaption.set("videoSource", videoSource);
     newCaption.set("content", content);
     newCaption.set("translatedTitle", MIGRATED_TITLE);
     newCaption.set("tags", [captionTags.ytExCC]);
     newCaption.setACL(getPublicReadAdminReviewerACL());
     await newCaption.save(null, { useMasterKey: true });
+
+    // Increase caption count of the user
+    const captionerQuery = new Parse.Query<CaptionerSchema>(
+      PARSE_CLASS.captioner
+    );
+    if (userId) {
+      captionerQuery.equalTo("userId", userId);
+    } else {
+      captionerQuery.equalTo("objectId", captionerId);
+    }
+    const captioner = await captionerQuery.first({ useMasterKey: true });
+    if (captioner) {
+      captioner.increment("captionCount");
+      await captioner.save(null, { useMasterKey: true });
+    }
+    // Increase caption count of the video
+    const videoQuery = new Parse.Query<VideoSchema>("videos");
+    videoQuery.equalTo("sourceId", videoId).equalTo("source", videoSource);
+    const video = await videoQuery.first();
+    if (video) {
+      video.increment("captionCount");
+      const captionLanguageCount = video.get("captions") || {};
+      captionLanguageCount[languageCode] =
+        (captionLanguageCount[languageCode] || 0) + 1;
+      video.set("captions", captionLanguageCount);
+      await video.save(null, { useMasterKey: true });
+    }
+
     return { status: "added" };
   }
 );

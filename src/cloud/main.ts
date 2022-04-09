@@ -1435,10 +1435,10 @@ Parse.Cloud.define(
       request.params;
     const searchRegex = new RegExp(escapeRegexInString(title), "i");
     // Find videos where the name contains the search string
-    if (videoLanguageCode === languages.unk) {
+    if (videoLanguageCode === languages.unk || !videoLanguageCode) {
       videoLanguageCode = "any";
     }
-    if (captionLanguageCode === languages.unk) {
+    if (captionLanguageCode === languages.unk || !captionLanguageCode) {
       captionLanguageCode = "any";
     }
     const videoQuery = getVideoByTitleQuery(
@@ -1454,6 +1454,7 @@ Parse.Cloud.define(
     );
     const videosWithVideoIdQuery = await getVideoByVideoIdQuery(
       searchRegex,
+      captionLanguageCode,
       videoLanguageCode
     );
 
