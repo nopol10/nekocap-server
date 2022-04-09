@@ -52,6 +52,15 @@ export const getAdminReviewerACL = () => {
   return acl;
 };
 
+export const getPublicReadAdminACL = () => {
+  const acl = new Parse.ACL();
+  acl.setPublicReadAccess(true);
+  acl.setRoleReadAccess(role.admin, true);
+  acl.setRoleWriteAccess(role.admin, true);
+  acl.setRoleReadAccess(role.reviewer, true);
+  return acl;
+};
+
 export const getPublicReadAdminReviewerACL = () => {
   const acl = new Parse.ACL();
   acl.setPublicReadAccess(true);

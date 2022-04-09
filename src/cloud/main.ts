@@ -51,6 +51,7 @@ import { decompressFromBase64 } from "lz-string";
 import { getAdminACL, getPublicReadAdminReviewerACL } from "./acl";
 import "./hooks.ts";
 import "./video-apis.ts";
+import "./migration.ts";
 import type {
   CaptionFileFormat,
   ServerResponse,
@@ -65,13 +66,18 @@ import {
   MAX_VIDEO_TITLE_LENGTH,
 } from "@/common/feature/caption-editor/constants";
 import sanitizeFilename from "sanitize-filename";
-import { CAPTION_SUBMISSION_COOLDOWN, PARSE_CLASS } from "./constants";
+import {
+  CAPTION_SUBMISSION_COOLDOWN,
+  ERROR_MESSAGES,
+  PARSE_CLASS,
+} from "./constants";
 import { validateAss } from "./validator";
 import {
   getVideoByCaptionTitleQuery,
   getVideoByTitleQuery,
   getVideoByVideoIdQuery,
 } from "./search";
+import { isInMaintenanceMode } from "./config";
 /**
  * Load the list of captions available for a video
  */
@@ -248,13 +254,16 @@ Parse.Cloud.define(
   ): Promise<UploadResponse> => {
     const { user } = request;
     if (!user || !user.getSessionToken()) {
-      return { status: "error", error: "Not authorized! Please login" };
+      return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
+    }
+    if (await isInMaintenanceMode()) {
+      return { status: "error", error: ERROR_MESSAGES.MAINTENANCE };
     }
     try {
       const { banned, verified, lastSubmissionTime, name } =
         await getUserProfile(user.id);
       if (banned) {
-        return { status: "error", error: "Not authorized! You are banned!" };
+        return { status: "error", error: ERROR_MESSAGES.BANNED };
       }
       if (!name) {
         return {
@@ -412,12 +421,12 @@ Parse.Cloud.define(
   ): Promise<UploadResponse> => {
     const { user } = request;
     if (!user || !user.getSessionToken()) {
-      return { status: "error", error: "Not authorized! Please login" };
+      return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
     }
     try {
       const { banned, verified } = await getUserProfile(user.id);
       if (banned) {
-        return { status: "error", error: "Not authorized! You are banned!" };
+        return { status: "error", error: ERROR_MESSAGES.BANNED };
       }
       const {
         captionId,
@@ -691,7 +700,7 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<LoadPrivateCaptionerDataRequestParams>
   ): Promise<LoadPrivateCaptionerDataResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
-      return { status: "error", error: "Not authorized! Please login" };
+      return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
     }
     const { withCaptions = true } = request.params;
     const userId = request.user.id;
@@ -744,7 +753,10 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<UpdateCaptionerProfileParams>
   ): Promise<LoadPrivateCaptionerDataResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
-      return { status: "error", error: "Not authorized! Please login" };
+      return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
+    }
+    if (await isInMaintenanceMode()) {
+      return { status: "error", error: ERROR_MESSAGES.MAINTENANCE };
     }
     const {
       languageCodes,
@@ -867,7 +879,10 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<{ captionId: string }>
   ): Promise<LoadPrivateCaptionerDataResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
-      return { status: "error", error: "Not authorized! Please login" };
+      return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
+    }
+    if (await isInMaintenanceMode()) {
+      return { status: "error", error: ERROR_MESSAGES.MAINTENANCE };
     }
     const { captionId } = request.params;
     const isAdmin = await hasAdminRole(request.user);
@@ -924,7 +939,10 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<{ captionId: string }>
   ): Promise<LoadPrivateCaptionerDataResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
-      return { status: "error", error: "Not authorized! Please login" };
+      return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
+    }
+    if (await isInMaintenanceMode()) {
+      return { status: "error", error: ERROR_MESSAGES.MAINTENANCE };
     }
     const { captionId: captionId } = request.params;
 
@@ -999,7 +1017,10 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<{ captionId: string }>
   ): Promise<LoadPrivateCaptionerDataResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
-      return { status: "error", error: "Not authorized! Please login" };
+      return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
+    }
+    if (await isInMaintenanceMode()) {
+      return { status: "error", error: ERROR_MESSAGES.MAINTENANCE };
     }
     const { captionId } = request.params;
 
@@ -1065,7 +1086,10 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<ReasonedCaptionAction>
   ): Promise<ServerResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
-      return { status: "error", error: "Not authorized! Please login" };
+      return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
+    }
+    if (await isInMaintenanceMode()) {
+      return { status: "error", error: ERROR_MESSAGES.MAINTENANCE };
     }
     const { captionId: captionId, reason } = request.params;
 
@@ -1127,7 +1151,10 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<ReasonedCaptionAction>
   ): Promise<ServerResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
-      return { status: "error", error: "Not authorized! Please login" };
+      return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
+    }
+    if (await isInMaintenanceMode()) {
+      return { status: "error", error: ERROR_MESSAGES.MAINTENANCE };
     }
     const { captionId: captionId, reason } = request.params;
 
@@ -1304,7 +1331,10 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<RoleRequest>
   ): Promise<ServerResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
-      return { status: "error", error: "Not authorized! Please login" };
+      return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
+    }
+    if (await isInMaintenanceMode()) {
+      return { status: "error", error: ERROR_MESSAGES.MAINTENANCE };
     }
     const { user: requester } = request;
     const isAdmin = await hasAdminRole(requester);
@@ -1350,7 +1380,10 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<RoleRequest>
   ): Promise<ServerResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
-      return { status: "error", error: "Not authorized! Please login" };
+      return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
+    }
+    if (await isInMaintenanceMode()) {
+      return { status: "error", error: ERROR_MESSAGES.MAINTENANCE };
     }
     const { user: requester } = request;
     const isAdmin = await hasAdminRole(requester);
@@ -1443,7 +1476,10 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<VerifyRequest>
   ): Promise<ServerResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
-      return { status: "error", error: "Not authorized! Please login" };
+      return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
+    }
+    if (await isInMaintenanceMode()) {
+      return { status: "error", error: ERROR_MESSAGES.MAINTENANCE };
     }
     const { user: requester } = request;
     const isAdmin = await hasAdminRole(requester);
@@ -1472,7 +1508,10 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<VerifyRequest>
   ): Promise<ServerResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
-      return { status: "error", error: "Not authorized! Please login" };
+      return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
+    }
+    if (await isInMaintenanceMode()) {
+      return { status: "error", error: ERROR_MESSAGES.MAINTENANCE };
     }
     const { user: requester } = request;
     const isAdmin = await hasAdminRole(requester);
