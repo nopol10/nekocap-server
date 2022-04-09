@@ -78,6 +78,7 @@ import {
   getVideoByVideoIdQuery,
 } from "./search";
 import { isInMaintenanceMode } from "./config";
+import { languages } from "@/common/languages";
 /**
  * Load the list of captions available for a video
  */
@@ -1429,15 +1430,17 @@ Parse.Cloud.define(
   async (
     request: Parse.Cloud.FunctionRequest<SearchRequest>
   ): Promise<VideoSearchResponse> => {
-    const {
-      title,
-      videoLanguageCode = "any",
-      captionLanguageCode = "any",
-      limit,
-      offset,
-    } = request.params;
+    const { title, limit, offset } = request.params;
+    let { videoLanguageCode = "any", captionLanguageCode = "any" } =
+      request.params;
     const searchRegex = new RegExp(escapeRegexInString(title), "i");
     // Find videos where the name contains the search string
+    if (videoLanguageCode === languages.unk) {
+      videoLanguageCode = "any";
+    }
+    if (captionLanguageCode === languages.unk) {
+      captionLanguageCode = "any";
+    }
     const videoQuery = getVideoByTitleQuery(
       searchRegex,
       captionLanguageCode,
@@ -1449,7 +1452,10 @@ Parse.Cloud.define(
       captionLanguageCode,
       videoLanguageCode
     );
-    const videosWithVideoIdQuery = await getVideoByVideoIdQuery(searchRegex);
+    const videosWithVideoIdQuery = await getVideoByVideoIdQuery(
+      searchRegex,
+      videoLanguageCode
+    );
 
     const fullQuery = Parse.Query.or(
       ...[videoQuery, videosWithCaptionNames, videosWithVideoIdQuery].filter(
