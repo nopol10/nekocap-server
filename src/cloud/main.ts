@@ -1553,11 +1553,28 @@ Parse.Cloud.define(
 
     const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
     query.notEqualTo("rejected", true);
+    // Set limit to 1 more than the requested limit to check if there are more results
     query
       .limit(limit + 1)
       .skip(offset)
       .descending("createdAt");
-    const captions = await query.find();
+    let captions = await query.find();
+    let count = undefined;
+    if (captions.length <= 0 && offset > 0) {
+      // Requested offset could be past the last page, try returning the last page
+      count = await new Parse.Query(PARSE_CLASS.captions)
+        .notEqualTo("rejected", true)
+        .count();
+      const lastPageQuery = new Parse.Query<CaptionSchema>(
+        PARSE_CLASS.captions
+      );
+      lastPageQuery.notEqualTo("rejected", true);
+      lastPageQuery
+        .limit(limit)
+        .skip(count - (count % limit))
+        .descending("createdAt");
+      captions = await lastPageQuery.find();
+    }
     const outputSubs: CaptionListFields[] = await Promise.all(
       captions.map(async (sub) => {
         return await captionToListFields(sub);
@@ -1568,6 +1585,7 @@ Parse.Cloud.define(
       status: "success",
       captions: outputSubs.slice(0, limit),
       hasMoreResults: captions.length > limit,
+      totalCount: count,
     };
   }
 );
