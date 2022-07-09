@@ -6,6 +6,7 @@ import {
 } from "@/common/feature/caption-editor/types";
 import { baseLanguages, languages } from "@/common/languages";
 import youtubedl, { YtResponse } from "youtube-dl-exec";
+import { allowAutoCaptioning } from "./config";
 
 type YtCaptionList = { [languageCode: string]: { ext: string; url: string }[] };
 
@@ -45,8 +46,12 @@ Parse.Cloud.define(
   ): Promise<GetAutoCaptionListResponse> => {
     const { videoId, videoSource } = request.params;
     if (videoSource !== VideoSource.Youtube) {
-      console.log("Not youtube");
+      console.log("[getAutoCaptionList] Not youtube");
       return { captions: [], status: "error" };
+    }
+    // Temporarily disable auto captioning until cpu usage issue is resolved
+    if (!(await allowAutoCaptioning())) {
+      return { captions: [], status: "success" };
     }
 
     const youtubeDataResponse = (await youtubedl(
