@@ -38,6 +38,7 @@ var api = new ParseServer({
     firebase: new FirebaseAuthAdapter(),
     google: {},
   },
+  allowHeaders: ["sentry-trace", "baggage"],
   allowClientClassCreation: false,
   databaseURI: databaseUri || "mongodb://localhost:27017/dev",
   cloud: process.env.CLOUD_CODE_MAIN || __dirname + "/cloud.js",
@@ -64,6 +65,7 @@ Sentry.init({
   // of transactions for performance monitoring.
   // We recommend adjusting this value in production
   tracesSampleRate: 0.2,
+  enabled: !!process.env.PROD,
 });
 
 var app = express();
