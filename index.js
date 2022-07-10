@@ -5,6 +5,8 @@ const { FirebaseAuthAdapter } = require("parse-server-firebase-auth");
 const fs = require("fs");
 const dotenv = require("dotenv");
 const helmet = require("helmet");
+const Sentry = require("@sentry/node");
+const Tracing = require("@sentry/tracing");
 
 dotenv.config();
 var databaseUri = process.env.DATABASE_URI || "";
@@ -49,7 +51,24 @@ var api = new ParseServer({
   logLevel: "error",
 });
 
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  integrations: [
+    // enable HTTP calls tracing
+    new Sentry.Integrations.Http({ tracing: true }),
+    // enable Express.js middleware tracing
+    new Tracing.Integrations.Express({ app }),
+  ],
+
+  // Set tracesSampleRate to 1.0 to capture 100%
+  // of transactions for performance monitoring.
+  // We recommend adjusting this value in production
+  tracesSampleRate: 0.2,
+});
+
 var app = express();
+app.use(Sentry.Handlers.requestHandler());
+app.use(Sentry.Handlers.tracingHandler());
 app.use(helmet());
 app.use(compression());
 
@@ -69,6 +88,7 @@ if (process.env.PROD) {
     console.log("NekoCap HTTPS server running on port " + port + ".");
   });
 }
+app.use(Sentry.Handlers.errorHandler());
 // The HTTP server is used to allow cloud code to make calls to the actual parse instance
 // Ideally this will not be exposed by the container.
 const httpServer = require("http").createServer(app);
