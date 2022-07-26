@@ -52,6 +52,7 @@ import { getAdminACL, getPublicReadAdminReviewerACL } from "./acl";
 import "./hooks.ts";
 import "./video-apis.ts";
 import "./migration.ts";
+import "./stats.ts";
 import type {
   CaptionFileFormat,
   ServerResponse,
@@ -79,6 +80,8 @@ import {
 } from "./search";
 import { isInMaintenanceMode } from "./config";
 import { languages } from "@/common/languages";
+import { captionToListFields } from "./captions/caption-to-list-field";
+import { getUserProfile } from "./users/get-user-profile";
 /**
  * Load the list of captions available for a video
  */
@@ -555,49 +558,6 @@ Parse.Cloud.define(
   }
 );
 
-const captionToListFields = async (
-  sub: CaptionSchema
-): Promise<CaptionListFields> => {
-  const videoId = sub.get("videoId");
-  const videoQuery = new Parse.Query<VideoSchema>(PARSE_CLASS.videos);
-  videoQuery.equalTo("sourceId", videoId);
-  const video = await videoQuery.first();
-  let videoName = "",
-    videoLanguage = "",
-    createdDate = 0,
-    updatedDate = 0;
-  if (video) {
-    videoName = video.get("name");
-    videoLanguage = video.get("language");
-  }
-  createdDate = unixSeconds(sub.createdAt);
-  updatedDate = unixSeconds(sub.updatedAt);
-  const creatorId = sub.get("creatorId");
-
-  const captioner = await getUserProfile(creatorId);
-
-  return <CaptionListFields>{
-    id: sub.id,
-    language: sub.get("language"),
-    videoId,
-    videoSource: sub.get("videoSource"),
-    data: "",
-    creatorId: sub.get("creatorId"),
-    creatorName: captioner ? captioner.name : "",
-    videoName,
-    videoLanguage,
-    views: sub.get("views") || 0,
-    translatedTitle: sub.get("translatedTitle") || undefined,
-    likes: sub.get("likes") || 0,
-    dislikes: sub.get("dislikes") || 0,
-    verified: sub.get("verified") || false,
-    rejected: sub.get("rejected") || undefined,
-    createdDate,
-    updatedDate,
-    tags: sub.get("tags") || [],
-  };
-};
-
 const getUserCaptions = async ({
   limit = 20,
   offset = 0,
@@ -616,47 +576,6 @@ const getUserCaptions = async ({
     })
   );
   return outputSubs;
-};
-
-const getUserProfile = async (
-  userId: string
-): Promise<CaptionerFields | undefined> => {
-  const query = new Parse.Query<CaptionerSchema>(PARSE_CLASS.captioner);
-  query.equalTo("userId", userId);
-  const captioner = await query.first();
-  if (!captioner) {
-    return undefined;
-  }
-
-  const userQuery = new Parse.Query(Parse.User);
-  userQuery.equalTo("objectId", userId);
-  const user = await userQuery.first({ useMasterKey: true });
-
-  let isAdmin = false;
-  let isReviewer = false;
-  let isReviewerManager = false;
-  if (user) {
-    isAdmin = user ? await hasAdminRole(user) : false;
-    isReviewer = user ? await hasReviewerRole(user) : false;
-    isReviewerManager = user ? await hasReviewerManagerRole(user) : false;
-  }
-
-  return {
-    name: captioner.get("name"),
-    nameTag: captioner.get("nameTag"),
-    profileMessage: captioner.get("profileMessage"),
-    recs: captioner.get("recs"),
-    userId: userId,
-    verified: captioner.get("verified"),
-    banned: captioner.get("banned"),
-    lastSubmissionTime: captioner.get("lastSubmissionTime") || 0,
-    donationLink: captioner.get("donationLink"),
-    languageCodes: captioner.get("languages"),
-    captionCount: captioner.get("captionCount") || 0,
-    isAdmin,
-    isReviewer,
-    isReviewerManager,
-  };
 };
 
 const getUserPrivateProfile = async (
