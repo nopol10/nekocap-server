@@ -1,3 +1,4 @@
+import { CaptionPrivacy } from "@/common/feature/video/types";
 import { CaptionSchema, VideoSchema } from "@/common/providers/parse/types";
 import { PARSE_CLASS } from "./constants";
 import { escapeRegexInString, getRelatedLanguageCodes } from "./utils";
@@ -123,7 +124,8 @@ export const getVideoByCaptionTitleQuery = async (
   } else {
     captionQuery.matches("translatedTitle", title);
   }
-  let captionQueryResult = await captionQuery.find();
+  captionQuery.containedIn("privacy", [undefined, CaptionPrivacy.Public]);
+  let captionQueryResult = await captionQuery.find({ useMasterKey: true });
   const videosWithCaptionNames = captionQueryResult.map((caption) => {
     return {
       videoId: caption.get("videoId"),

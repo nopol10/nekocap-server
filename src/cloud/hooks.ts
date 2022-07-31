@@ -1,3 +1,4 @@
+import { CaptionPrivacy } from "@/common/feature/video/types";
 import type {
   CaptionSchema,
   CaptionerSchema,
@@ -37,25 +38,25 @@ Parse.Cloud.afterSave(Parse.User, function (request) {
   newCaptionerPrivate.save(null, { useMasterKey: true });
 });
 
-Parse.Cloud.afterSave("captions", async (request) => {
-  if (request.object.existed()) {
-    // Not new
-    return;
-  }
-  // Add to the captioner's count
+async function updateVideoCaptionCounts(request: Parse.Cloud.AfterSaveRequest) {
   const newCaption = request.object as CaptionSchema;
-  const captionerId = newCaption.get("creatorId");
-
-  const query = new Parse.Query<CaptionerSchema>("captioner");
-  query.equalTo("userId", captionerId);
-  const captioner = await query.first();
-  if (!captioner) {
-    return undefined;
+  const originalCaption = request.original as CaptionSchema;
+  const newPrivacy = newCaption.get("privacy") || 0;
+  let captionCountChange = 1;
+  if (originalCaption) {
+    const originalPrivacy = originalCaption.get("privacy") || 0;
+    if (
+      originalPrivacy === CaptionPrivacy.Public &&
+      newPrivacy !== CaptionPrivacy.Public
+    ) {
+      captionCountChange = -1;
+    } else if (originalPrivacy === newPrivacy) {
+      captionCountChange = 0;
+    }
+    // The default case of anything --> public results in a change of +1, same as adding a new caption
+  } else if (newPrivacy !== CaptionPrivacy.Public) {
+    captionCountChange = 0;
   }
-  captioner.set("lastSubmissionTime", Date.now());
-  captioner.increment("captionCount");
-  await captioner.save(null, { useMasterKey: true });
-
   const videoId = newCaption.get("videoId");
   const videoSource = newCaption.get("videoSource");
   const videoQuery = new Parse.Query<VideoSchema>("videos");
@@ -63,14 +64,45 @@ Parse.Cloud.afterSave("captions", async (request) => {
 
   const video = await videoQuery.first();
   if (video) {
-    video.increment("captionCount");
+    if (captionCountChange > 0) {
+      video.increment("captionCount");
+    } else if (captionCountChange < 0) {
+      video.decrement("captionCount");
+    }
     const captionLanguageCount = video.get("captions") || {};
     const language = newCaption.get("language");
-    captionLanguageCount[language] = (captionLanguageCount[language] || 0) + 1;
+    captionLanguageCount[language] = Math.max(
+      0,
+      (captionLanguageCount[language] || 0) + captionCountChange
+    );
     video.set("captions", captionLanguageCount);
     await video.save(null, { useMasterKey: true });
   }
-});
+}
+
+Parse.Cloud.afterSave(
+  "captions",
+  async (request: Parse.Cloud.AfterSaveRequest) => {
+    await updateVideoCaptionCounts(request);
+    if (request.object.existed()) {
+      // Not new
+      return;
+    }
+    // Add to the captioner's count
+    const newCaption = request.object as CaptionSchema;
+    const captionerId = newCaption.get("creatorId");
+
+    const query = new Parse.Query<CaptionerSchema>("captioner");
+    query.equalTo("userId", captionerId);
+    const captioner = await query.first();
+    if (!captioner) {
+      return undefined;
+    }
+    captioner.set("lastSubmissionTime", Date.now());
+    captioner.increment("captionCount");
+    await captioner.save(null, { useMasterKey: true });
+  }
+);
 
 Parse.Cloud.afterDelete("captions", async (request) => {
   // Subtract from the captioner's count

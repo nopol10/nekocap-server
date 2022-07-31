@@ -1,9 +1,11 @@
-import type {
+import {
   VideoSource,
   VideoCaptionData,
+  CaptionPrivacy,
 } from "@/common/feature/video/types";
 import { videoSourceToProcessorMap } from "@/common/feature/video/utils";
 import { getBaseLanguageCode, languages } from "@/common/languages";
+import { CaptionSchema } from "@/common/providers/parse/types";
 import { role } from "./roles";
 
 export const unixSeconds = (date: Date) => {
@@ -84,6 +86,22 @@ export const hasReviewerRole = async (user: Parse.User): Promise<boolean> => {
     return true;
   }
   return await hasRole(user, role.reviewer);
+};
+
+export const canViewCaption = (
+  caption: CaptionSchema,
+  userId: string
+): boolean => {
+  const privacy: CaptionPrivacy = caption.get("privacy") || 0;
+  if (privacy === CaptionPrivacy.Public) {
+    return true;
+  }
+  // Only the creator can find this caption
+  const captionerId = caption.get("creatorId");
+  if (captionerId === userId) {
+    return true;
+  }
+  return false;
 };
 
 export const escapeRegexInString = (inString: string) => {

@@ -44,5 +44,6 @@ export const captionToListFields = async (
     createdDate,
     updatedDate,
     tags: sub.get("tags") || [],
+    privacy: sub.get("privacy") || 0,
   };
 };

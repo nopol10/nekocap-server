@@ -5,6 +5,7 @@ import type {
   RawCaptionData,
   UpdateCaptionRequest,
 } from "@/common/feature/video/types";
+import { CaptionPrivacy } from "@/common/feature/video/types";
 import type { LoadProfileParams } from "@/common/feature/profile/types";
 import type {
   CaptionLikesSchema,
@@ -37,6 +38,7 @@ import type {
 import type { SearchRequest } from "@/common/feature/search/types";
 import type { BrowseRequest } from "@/common/feature/public-dashboard/types";
 import {
+  canViewCaption,
   escapeRegexInString,
   getRelatedLanguageCodes,
   getVideoName,
@@ -94,32 +96,37 @@ Parse.Cloud.define(
       .equalTo("videoId", request.params.videoId)
       .equalTo("videoSource", request.params.videoSource.toString());
     const results = await query.find();
-    return await Promise.all(
-      results.map(async (result) => {
-        const userQuery = new Parse.Query<CaptionerSchema>(
-          PARSE_CLASS.captioner
-        );
-        const captionerId = result.get("creatorId");
-        userQuery.equalTo("userId", captionerId);
-        const userResult = await userQuery.find();
-        let username = "";
-        // Checking the results in case the captioner has somehow been deleted
-        if (userResult.length > 0) {
-          username = userResult[0].get("name");
-        }
+    return (
+      await Promise.all(
+        results.map(async (result) => {
+          if (!canViewCaption(result, request.user?.id)) {
+            return undefined;
+          }
+          const captionerId = result.get("creatorId");
+          const userQuery = new Parse.Query<CaptionerSchema>(
+            PARSE_CLASS.captioner
+          );
+          userQuery.equalTo("userId", captionerId);
+          const userResult = await userQuery.find();
+          let username = "";
+          // Checking the results in case the captioner has somehow been deleted
+          if (userResult.length > 0) {
+            username = userResult[0].get("name");
+          }
 
-        return <LoadCaptionsResult>{
-          id: result.id,
-          captionerId,
-          captionerName: username,
-          verified: result.get("verified") || false,
-          likes: result.get("likes") || 0,
-          dislikes: result.get("dislikes") || 0,
-          languageCode: result.get("language"),
-          tags: result.get("tags") || [],
-        };
-      })
-    );
+          return <LoadCaptionsResult>{
+            id: result.id,
+            captionerId,
+            captionerName: username,
+            verified: result.get("verified") || false,
+            likes: result.get("likes") || 0,
+            dislikes: result.get("dislikes") || 0,
+            languageCode: result.get("language"),
+            tags: result.get("tags") || [],
+          };
+        })
+      )
+    ).filter(Boolean);
   }
 );
 
@@ -562,7 +569,8 @@ const getUserCaptions = async ({
   limit = 20,
   offset = 0,
   captionerId: captionerId,
-}: CaptionsRequest) => {
+  userId,
+}: CaptionsRequest & { userId: string }) => {
   const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
   query
     .limit(limit)
@@ -570,11 +578,16 @@ const getUserCaptions = async ({
     .equalTo("creatorId", captionerId)
     .descending("createdAt");
   const captions = await query.find();
-  const outputSubs: CaptionListFields[] = await Promise.all(
-    captions.map(async (sub) => {
-      return await captionToListFields(sub);
-    })
-  );
+  const outputSubs: CaptionListFields[] = (
+    await Promise.all(
+      captions.map(async (sub) => {
+        if (!canViewCaption(sub, userId)) {
+          return undefined;
+        }
+        return await captionToListFields(sub);
+      })
+    )
+  ).filter(Boolean);
   return outputSubs;
 };
 
@@ -629,6 +642,7 @@ Parse.Cloud.define(
           captionerId: userId,
           limit: 50,
           offset: 0,
+          userId: request.user.id,
         })
       : [];
     const profile: CaptionerFields = await getUserProfile(userId);
@@ -659,7 +673,9 @@ Parse.Cloud.define(
       captionerId,
       limit: limit || 50,
       offset: offset || 0,
+      userId: request.user?.id,
     });
+
     return {
       status: "success",
       captions: outputSubs,
@@ -782,6 +798,7 @@ Parse.Cloud.define(
           captionerId: profileId,
           limit: 50,
           offset: 0,
+          userId: request.user?.id,
         })
       : [];
     const profile: CaptionerFields = await getUserProfile(profileId);
@@ -1131,16 +1148,21 @@ Parse.Cloud.define(
  */
 Parse.Cloud.define(
   "loadLatestCaptions",
-  async (): Promise<CaptionsResponse> => {
+  async (request): Promise<CaptionsResponse> => {
     const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
     query.notEqualTo("rejected", true);
     query.limit(10).descending("createdAt");
     const captions = await query.find();
-    const outputSubs: CaptionListFields[] = await Promise.all(
-      captions.map(async (sub) => {
-        return await captionToListFields(sub);
-      })
-    );
+    const outputSubs: CaptionListFields[] = (
+      await Promise.all(
+        captions.map(async (sub) => {
+          if (!canViewCaption(sub, request.user?.id)) {
+            return undefined;
+          }
+          return await captionToListFields(sub);
+        })
+      )
+    ).filter(Boolean);
 
     return <CaptionsResponse>{
       status: "success",
@@ -1173,11 +1195,16 @@ Parse.Cloud.define(
       .descending("createdAt");
 
     const captions = await mergedQuery.find();
-    const outputSubs: CaptionListFields[] = await Promise.all(
-      captions.map(async (sub) => {
-        return await captionToListFields(sub);
-      })
-    );
+    const outputSubs: CaptionListFields[] = (
+      await Promise.all(
+        captions.map(async (sub) => {
+          if (!canViewCaption(sub, request.user?.id)) {
+            return undefined;
+          }
+          return await captionToListFields(sub);
+        })
+      )
+    ).filter(Boolean);
 
     return {
       status: "success",
@@ -1202,11 +1229,19 @@ Parse.Cloud.define(
     const outputSubs: CaptionListFields[] = (
       await Promise.all(
         captions.map(async (sub) => {
+          if (!canViewCaption(sub, request.user?.id)) {
+            return undefined;
+          }
           return await captionToListFields(sub);
         })
       )
     )
-      .filter((sub) => sub.likes > sub.dislikes)
+      .filter((sub) => {
+        if (!sub) {
+          return false;
+        }
+        return sub.likes > sub.dislikes;
+      })
       .slice(0, 10);
 
     return {
@@ -1462,6 +1497,7 @@ Parse.Cloud.define(
 
 /**
  * Browse captions
+ * Only displays public captions
  */
 Parse.Cloud.define(
   "browse",
@@ -1472,6 +1508,7 @@ Parse.Cloud.define(
 
     const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
     query.notEqualTo("rejected", true);
+    query.containedIn("privacy", [undefined, CaptionPrivacy.Public]);
     // Set limit to 1 more than the requested limit to check if there are more results
     query
       .limit(limit + 1)

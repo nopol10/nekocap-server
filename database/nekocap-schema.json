@@ -91,7 +91,17 @@
         "subtitles": { "required": false, "defaultValue": {} },
         "subtitleCount": { "required": false, "defaultValue": 0 }
       },
-      "indexes": { "_id_": { "_id": 1 } },
+      "indexes": {
+        "_id_": { "_id": 1 },
+        "name_1": { "name": 1 },
+        "sourceId_1_source_1_language_1": {
+          "sourceId": 1,
+          "source": 1,
+          "language": 1
+        },
+        "captionCount_-1_sourceId_1": { "captionCount": -1, "sourceId": 1 },
+        "name_1_captionCount_-1": { "name": 1, "captionCount": -1 }
+      },
       "class_permissions": {
         "get": { "*": true, "requiresAuthentication": true },
         "find": { "*": true, "requiresAuthentication": true },
@@ -136,9 +146,19 @@
         "reviewHistory": { "required": false, "defaultValue": [] },
         "rawContent": { "required": false },
         "rawFile": { "required": false },
-        "translatedTitle": { "required": false }
+        "translatedTitle": { "required": false },
+        "views": { "required": false, "defaultValue": 0 },
+        "privacy": { "required": false, "defaultValue": 0 }
       },
-      "indexes": { "_id_": { "_id": 1 } },
+      "indexes": {
+        "_id_": { "_id": 1 },
+        "translatedTitle_1_language_1": { "translatedTitle": 1, "language": 1 },
+        "creatorId_1": { "creatorId": 1 },
+        "videoId_1_videoSource_1": { "videoId": 1, "videoSource": 1 },
+        "creatorId_1__created_at_-1": { "creatorId": 1, "_created_at": -1 },
+        "rejected_1__created_at_-1": { "rejected": 1, "_created_at": -1 },
+        "_created_at_-1": { "_created_at": -1 }
+      },
       "class_permissions": {
         "get": { "*": true },
         "find": { "*": true },
@@ -167,7 +187,9 @@
     "reviewHistory": "array",
     "rawContent": "string",
     "rawFile": "file",
-    "translatedTitle": "string"
+    "translatedTitle": "string",
+    "views": "number",
+    "privacy": "number"
   },
   {
     "_id": "captionComments",
@@ -242,7 +264,7 @@
         "banned": { "required": false, "defaultValue": false },
         "lastSubmissionTime": { "required": false, "defaultValue": 0 }
       },
-      "indexes": { "_id_": { "_id": 1 } },
+      "indexes": { "_id_": { "_id": 1 }, "userId_1": { "userId": 1 } },
       "class_permissions": {
         "get": { "*": true },
         "find": { "*": true },
@@ -277,7 +299,10 @@
         "email": { "required": false },
         "subberId": { "required": false }
       },
-      "indexes": { "_id_": { "_id": 1 } },
+      "indexes": {
+        "_id_": { "_id": 1 },
+        "captionerId_1": { "captionerId": 1 }
+      },
       "class_permissions": {
         "get": { "requiresAuthentication": true },
         "find": { "requiresAuthentication": true },
