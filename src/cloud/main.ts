@@ -292,8 +292,13 @@ Parse.Cloud.define(
           error: `You cannot submit another caption yet. Please wait at least 5 minutes after a submission before submitting again.`,
         };
       }
-      const { caption, rawCaption, video, hasAudioDescription } =
-        request.params;
+      const {
+        caption,
+        rawCaption,
+        video,
+        hasAudioDescription,
+        privacy = CaptionPrivacy.Public,
+      } = request.params;
       const stringifiedCaption = JSON.stringify(caption.data);
       // We only want to store the raws of ass captions
       const rawCaptionData =
@@ -397,6 +402,7 @@ Parse.Cloud.define(
       newCaption.set("content", stringifiedCaption);
       newCaption.set("translatedTitle", translatedTitle);
       newCaption.set("tags", tags);
+      newCaption.set("privacy", privacy);
       newCaption.setACL(getPublicReadAdminReviewerACL());
       await newCaption.save(null, { useMasterKey: true });
 
@@ -445,6 +451,7 @@ Parse.Cloud.define(
         captionData: newCaptionData,
         hasAudioDescription: newHasAudioDescription,
         translatedTitle: newTranslatedTitle,
+        privacy: newPrivacy,
       } = request.params;
       if (!captionId) {
         return { status: "error", error: "Missing caption id!" };
@@ -453,7 +460,8 @@ Parse.Cloud.define(
         isUndefinedOrNull(newRawCaption) &&
         isUndefinedOrNull(newCaptionData) &&
         isUndefinedOrNull(newHasAudioDescription) &&
-        isUndefinedOrNull(newTranslatedTitle)
+        isUndefinedOrNull(newTranslatedTitle) &&
+        isUndefinedOrNull(newPrivacy)
       ) {
         // Nothing needs to be updated
         return { status: "error", error: "Nothing to update" };
@@ -532,6 +540,10 @@ Parse.Cloud.define(
       if (!isUndefinedOrNull(newHasAudioDescription)) {
         if (newHasAudioDescription) tags.push(captionTags.audioDescribed);
         result.set("tags", tags);
+      }
+
+      if (!isUndefinedOrNull(newPrivacy)) {
+        result.set("privacy", newPrivacy);
       }
 
       result.set("translatedTitle", modifiedTranslatedTitle);
