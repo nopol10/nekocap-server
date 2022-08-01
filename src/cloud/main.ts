@@ -1271,6 +1271,13 @@ Parse.Cloud.define(
     if (!caption) {
       return undefined;
     }
+    const { user } = request;
+
+    const isAdmin = await hasAdminRole(user);
+    const isReviewer = await hasReviewerRole(user);
+    if (!isAdmin && !isReviewer) {
+      return undefined;
+    }
 
     const userProfile = await getUserProfile(caption.caption.get("creatorId"));
     const video = await loadVideo(
