@@ -95,7 +95,7 @@ Parse.Cloud.define(
       .notEqualTo("rejected", true)
       .equalTo("videoId", request.params.videoId)
       .equalTo("videoSource", request.params.videoSource.toString());
-    const results = await query.find();
+    const results = await query.find({ useMasterKey: true });
     return (
       await Promise.all(
         results.map(async (result) => {
@@ -173,7 +173,7 @@ const loadCaption = async (
 ): Promise<ServerSingleCaption | undefined> => {
   const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
   query.equalTo("objectId", captionId);
-  const caption = await query.first();
+  const caption = await query.first({ useMasterKey: true });
   if (!caption) {
     return undefined;
   }
@@ -362,7 +362,7 @@ Parse.Cloud.define(
       query.equalTo("videoSource", source);
       query.equalTo("creatorId", user.id);
       query.equalTo("language", captionLanguageCode);
-      const result = await query.find();
+      const result = await query.find({ useMasterKey: true });
       if (result.length >= 2) {
         throw new Error(
           "You already have 2 captions of the same language for this video!"
@@ -472,7 +472,7 @@ Parse.Cloud.define(
       const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
       query.equalTo("objectId", captionId);
       query.equalTo("creatorId", user.id);
-      const result = await query.first();
+      const result = await query.first({ useMasterKey: true });
       if (!result) {
         return { status: "error", error: "No such caption" };
       }
@@ -589,7 +589,7 @@ const getUserCaptions = async ({
     .skip(offset)
     .equalTo("creatorId", captionerId)
     .descending("createdAt");
-  const captions = await query.find();
+  const captions = await query.find({ useMasterKey: true });
   const outputSubs: CaptionListFields[] = (
     await Promise.all(
       captions.map(async (sub) => {
@@ -897,13 +897,12 @@ Parse.Cloud.define(
 
     const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
     query.equalTo("objectId", captionId);
-    const captions = await query.find();
+    const captions = await query.find({ useMasterKey: true });
     if (!captions || captions.length <= 0) {
       // Try to like a caption that doesn't exist
       return { status: "error", error: "No such caption" };
     }
 
-    const sessionToken = request.user.getSessionToken();
     const userId = request.user.id;
     const caption = captions[0];
     if (caption.get("creatorId") === userId) {
@@ -975,13 +974,12 @@ Parse.Cloud.define(
 
     const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
     query.equalTo("objectId", captionId);
-    const captions = await query.find();
+    const captions = await query.find({ useMasterKey: true });
     if (!captions || captions.length <= 0) {
       // Try to like a caption that doesn't exist
       return { status: "error", error: "No such caption" };
     }
 
-    const sessionToken = request.user.getSessionToken();
     const userId = request.user.id;
     const caption = captions[0];
     if (caption.get("creatorId") === userId) {
@@ -1044,7 +1042,7 @@ Parse.Cloud.define(
 
     const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
     query.equalTo("objectId", captionId);
-    const caption = await query.first();
+    const caption = await query.first({ useMasterKey: true });
     if (!caption) {
       // Try to like a caption that doesn't exist
       return { status: "error", error: "No such caption" };
@@ -1109,7 +1107,7 @@ Parse.Cloud.define(
 
     const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
     query.equalTo("objectId", captionId);
-    const caption = await query.first();
+    const caption = await query.first({ useMasterKey: true });
     if (!caption) {
       // Try to like a caption that doesn't exist
       return { status: "error", error: "No such caption" };
@@ -1164,7 +1162,7 @@ Parse.Cloud.define(
     const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
     query.notEqualTo("rejected", true);
     query.limit(10).descending("createdAt");
-    const captions = await query.find();
+    const captions = await query.find({ useMasterKey: true });
     const outputSubs: CaptionListFields[] = (
       await Promise.all(
         captions.map(async (sub) => {
@@ -1206,7 +1204,7 @@ Parse.Cloud.define(
       .limit(10)
       .descending("createdAt");
 
-    const captions = await mergedQuery.find();
+    const captions = await mergedQuery.find({ useMasterKey: true });
     const outputSubs: CaptionListFields[] = (
       await Promise.all(
         captions.map(async (sub) => {
@@ -1237,7 +1235,7 @@ Parse.Cloud.define(
     query.notEqualTo("rejected", true).greaterThan("likes", 0);
     query.limit(100).descending("likes");
 
-    const captions = await query.find();
+    const captions = await query.find({ useMasterKey: true });
     const outputSubs: CaptionListFields[] = (
       await Promise.all(
         captions.map(async (sub) => {
@@ -1526,13 +1524,13 @@ Parse.Cloud.define(
       .limit(limit + 1)
       .skip(offset)
       .descending("createdAt");
-    let captions = await query.find();
+    let captions = await query.find({ useMasterKey: true });
     let count = undefined;
     if (captions.length <= 0 && offset > 0) {
       // Requested offset could be past the last page, try returning the last page
       count = await new Parse.Query(PARSE_CLASS.captions)
         .notEqualTo("rejected", true)
-        .count();
+        .count({ useMasterKey: true });
       const lastPageQuery = new Parse.Query<CaptionSchema>(
         PARSE_CLASS.captions
       );
@@ -1541,7 +1539,7 @@ Parse.Cloud.define(
         .limit(limit)
         .skip(count - (count % limit))
         .descending("createdAt");
-      captions = await lastPageQuery.find();
+      captions = await lastPageQuery.find({ useMasterKey: true });
     }
     const outputSubs: CaptionListFields[] = await Promise.all(
       captions.map(async (sub) => {

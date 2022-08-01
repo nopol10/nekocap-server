@@ -160,9 +160,9 @@
         "_created_at_-1": { "_created_at": -1 }
       },
       "class_permissions": {
-        "get": { "*": true },
-        "find": { "*": true },
-        "count": { "*": true },
+        "get": {},
+        "find": {},
+        "count": {},
         "create": {},
         "update": {},
         "delete": {},
