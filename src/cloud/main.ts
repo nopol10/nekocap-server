@@ -82,8 +82,12 @@ import {
 } from "./search";
 import { isInMaintenanceMode } from "./config";
 import { languages } from "@/common/languages";
-import { captionToListFields } from "./captions/caption-to-list-field";
+import {
+  captionToListFields,
+  captionWithJoinedDataToListFields,
+} from "./captions/caption-to-list-field";
 import { getUserProfile } from "./users/get-user-profile";
+import { getCaptions } from "./captions/caption-aggregate-query";
 /**
  * Load the list of captions available for a video
  */
@@ -583,24 +587,13 @@ const getUserCaptions = async ({
   captionerId: captionerId,
   userId,
 }: CaptionsRequest & { userId: string }) => {
-  const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
-  query
-    .limit(limit)
-    .skip(offset)
-    .equalTo("creatorId", captionerId)
-    .descending("createdAt");
-  const captions = await query.find({ useMasterKey: true });
-  const outputSubs: CaptionListFields[] = (
-    await Promise.all(
-      captions.map(async (sub) => {
-        if (!canViewCaption(sub, userId)) {
-          return undefined;
-        }
-        return await captionToListFields(sub);
-      })
-    )
-  ).filter(Boolean);
-  return outputSubs;
+  return await getCaptions({
+    limit,
+    offset,
+    captionerId,
+    userId,
+    getRejected: true,
+  });
 };
 
 const getUserPrivateProfile = async (
@@ -1522,41 +1515,27 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<BrowseRequest>
   ): Promise<BrowseResponse> => {
     const { limit, offset } = request.params;
+    let captions = await getCaptions({
+      limit: limit + 1,
+      offset,
+      getRejected: false,
+    });
 
-    const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
-    query.notEqualTo("rejected", true);
-    query.containedIn("privacy", [undefined, CaptionPrivacy.Public]);
-    // Set limit to 1 more than the requested limit to check if there are more results
-    query
-      .limit(limit + 1)
-      .skip(offset)
-      .descending("createdAt");
-    let captions = await query.find({ useMasterKey: true });
     let count = undefined;
     if (captions.length <= 0 && offset > 0) {
       // Requested offset could be past the last page, try returning the last page
       count = await new Parse.Query(PARSE_CLASS.captions)
         .notEqualTo("rejected", true)
         .count({ useMasterKey: true });
-      const lastPageQuery = new Parse.Query<CaptionSchema>(
-        PARSE_CLASS.captions
-      );
-      lastPageQuery.notEqualTo("rejected", true);
-      lastPageQuery
-        .limit(limit)
-        .skip(count - (count % limit))
-        .descending("createdAt");
-      captions = await lastPageQuery.find({ useMasterKey: true });
+      captions = await getCaptions({
+        limit: limit,
+        offset: count - (count % limit),
+        getRejected: false,
+      });
     }
-    const outputSubs: CaptionListFields[] = await Promise.all(
-      captions.map(async (sub) => {
-        return await captionToListFields(sub);
-      })
-    );
-
     return {
       status: "success",
-      captions: outputSubs.slice(0, limit),
+      captions: captions.slice(0, limit),
       hasMoreResults: captions.length > limit,
       totalCount: count,
     };
