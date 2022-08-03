@@ -82,12 +82,9 @@ import {
 } from "./search";
 import { isInMaintenanceMode } from "./config";
 import { languages } from "@/common/languages";
-import {
-  captionToListFields,
-  captionWithJoinedDataToListFields,
-} from "./captions/caption-to-list-field";
+import { captionToListFields } from "./captions/caption-to-list-field";
 import { getUserProfile } from "./users/get-user-profile";
-import { getCaptions } from "./captions/caption-aggregate-query";
+import { getCaptions, getCaptionerCaptions } from "./captions/get-captions";
 /**
  * Load the list of captions available for a video
  */
@@ -581,21 +578,6 @@ Parse.Cloud.define(
   }
 );
 
-const getUserCaptions = async ({
-  limit = 20,
-  offset = 0,
-  captionerId: captionerId,
-  userId,
-}: CaptionsRequest & { userId: string }) => {
-  return await getCaptions({
-    limit,
-    offset,
-    captionerId,
-    userId,
-    getRejected: true,
-  });
-};
-
 const getUserPrivateProfile = async (
   targetUserId: string,
   sessionToken: string = undefined,
@@ -643,7 +625,7 @@ Parse.Cloud.define(
     const { withCaptions = true } = request.params;
     const userId = request.user.id;
     const outputSubs: CaptionListFields[] = withCaptions
-      ? await getUserCaptions({
+      ? await getCaptionerCaptions({
           captionerId: userId,
           limit: 50,
           offset: 0,
@@ -674,7 +656,7 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<CaptionsRequest>
   ): Promise<CaptionsResponse> => {
     const { captionerId, limit, offset } = request.params;
-    const outputSubs: CaptionListFields[] = await getUserCaptions({
+    const outputSubs: CaptionListFields[] = await getCaptionerCaptions({
       captionerId,
       limit: limit || 50,
       offset: offset || 0,
@@ -799,7 +781,7 @@ Parse.Cloud.define(
   ): Promise<PublicProfileResponse> => {
     const { withCaptions = true, profileId } = request.params;
     const outputSubs: CaptionListFields[] = withCaptions
-      ? await getUserCaptions({
+      ? await getCaptionerCaptions({
           captionerId: profileId,
           limit: 50,
           offset: 0,
@@ -1151,22 +1133,12 @@ Parse.Cloud.define(
  */
 Parse.Cloud.define(
   "loadLatestCaptions",
-  async (request): Promise<CaptionsResponse> => {
-    const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
-    query.notEqualTo("rejected", true);
-    query.limit(10).descending("createdAt");
-    const captions = await query.find({ useMasterKey: true });
-    const outputSubs: CaptionListFields[] = (
-      await Promise.all(
-        captions.map(async (sub) => {
-          if (!canViewCaption(sub, request.user?.id)) {
-            return undefined;
-          }
-          return await captionToListFields(sub);
-        })
-      )
-    ).filter(Boolean);
-
+  async (): Promise<CaptionsResponse> => {
+    const outputSubs = await getCaptions({
+      limit: 10,
+      offset: 0,
+      getRejected: false,
+    });
     return <CaptionsResponse>{
       status: "success",
       captions: outputSubs,
@@ -1184,30 +1156,15 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<{ languageCode: string }>
   ): Promise<CaptionsResponse> => {
     const { languageCode } = request.params;
+
     // Normalize the language code
     const languageCodes = getRelatedLanguageCodes(languageCode);
-    const mergedQuery = Parse.Query.or(
-      ...languageCodes.map((language) => {
-        const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
-        query.limit(10).descending("createdAt");
-        query.notEqualTo("rejected", true).equalTo("language", language);
-        return query;
-      })
-    )
-      .limit(10)
-      .descending("createdAt");
-
-    const captions = await mergedQuery.find({ useMasterKey: true });
-    const outputSubs: CaptionListFields[] = (
-      await Promise.all(
-        captions.map(async (sub) => {
-          if (!canViewCaption(sub, request.user?.id)) {
-            return undefined;
-          }
-          return await captionToListFields(sub);
-        })
-      )
-    ).filter(Boolean);
+    const outputSubs = await getCaptions({
+      limit: 10,
+      offset: 0,
+      getRejected: false,
+      languageCodes,
+    });
 
     return {
       status: "success",
