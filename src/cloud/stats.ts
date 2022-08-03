@@ -1,7 +1,7 @@
-import { CaptionSchema } from "@/common/providers/parse/types";
 import { StatsResponse } from "@/common/feature/stats/types";
 import { PARSE_CLASS } from "./constants";
-import { captionToListFields } from "./captions/caption-to-list-field";
+import { captionWithJoinedDataToListFields } from "./captions/caption-to-list-field";
+import { CAPTION_DETAILS_JOIN_PIPELINE } from "./captions/caption-details-join-pipeline";
 
 async function getTotalViews(): Promise<number> {
   const query = new Parse.Query(PARSE_CLASS.captions);
@@ -71,14 +71,10 @@ async function getTopCaptionsOfAllTime() {
         {
           limit: 5,
         },
+        ...CAPTION_DETAILS_JOIN_PIPELINE,
       ])
     ).map(async (caption: Record<string, any>) => {
-      return await captionToListFields(
-        Parse.Object.fromJSON({
-          className: PARSE_CLASS.captions,
-          ...caption,
-        }) as CaptionSchema
-      );
+      return await captionWithJoinedDataToListFields(caption);
     })
   );
 }
@@ -102,14 +98,10 @@ async function getTopCaptionsUploadedThisMonth() {
         {
           limit: 5,
         },
+        ...CAPTION_DETAILS_JOIN_PIPELINE,
       ])
     ).map(async (caption: Record<string, any>) => {
-      return await captionToListFields(
-        Parse.Object.fromJSON({
-          className: PARSE_CLASS.captions,
-          ...caption,
-        }) as CaptionSchema
-      );
+      return await captionWithJoinedDataToListFields(caption);
     })
   );
 }

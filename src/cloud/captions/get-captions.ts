@@ -4,6 +4,7 @@ import {
 } from "@/common/feature/video/types";
 import { CaptionSchema } from "@/common/providers/parse/types";
 import { PARSE_CLASS } from "cloud/constants";
+import { CAPTION_DETAILS_JOIN_PIPELINE } from "./caption-details-join-pipeline";
 import { captionWithJoinedDataToListFields } from "./caption-to-list-field";
 
 /**
@@ -67,30 +68,7 @@ export const getCaptions = async ({
         {
           limit: limit,
         },
-        {
-          lookup: {
-            from: "videos",
-            localField: "videoId",
-            foreignField: "sourceId",
-            as: "video",
-          },
-        },
-        {
-          // @ts-ignore
-          unwind: { path: "$video", preserveNullAndEmptyArrays: true },
-        },
-        {
-          lookup: {
-            from: "captioner",
-            localField: "creatorId",
-            foreignField: "userId",
-            as: "captioner",
-          },
-        },
-        {
-          // @ts-ignore
-          unwind: { path: "$captioner", preserveNullAndEmptyArrays: true },
-        },
+        ...CAPTION_DETAILS_JOIN_PIPELINE,
       ])
     ).map(async (caption: Record<string, any>, i: number) => {
       return await captionWithJoinedDataToListFields(caption);
