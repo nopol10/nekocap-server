@@ -813,13 +813,12 @@ Parse.Cloud.define(
 
     const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
     query.equalTo("objectId", captionId);
-    const captions = await query.find();
-    if (!captions || captions.length <= 0) {
-      return undefined;
+    const caption = await query.first({ useMasterKey: true });
+    if (!caption) {
+      return { status: "error", error: "Unknown caption" };
     }
     const sessionToken = request.user.getSessionToken();
     let useMasterKey = isAdmin;
-    const caption = captions[0];
     // Since the creator of a caption is not granted write access to the caption object, we'll use the master key let them
     // delete their own caption
     if (request.user.id === caption.get("creatorId")) {
