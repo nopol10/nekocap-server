@@ -85,6 +85,7 @@ import { languages } from "@/common/languages";
 import { captionToListFields } from "./captions/caption-to-list-field";
 import { getUserProfile } from "./users/get-user-profile";
 import { getCaptions, getCaptionerCaptions } from "./captions/get-captions";
+import { addMissingCaptionTags } from "./users/add-missing-tags";
 /**
  * Load the list of captions available for a video
  */
@@ -452,6 +453,7 @@ Parse.Cloud.define(
         captionData: newCaptionData,
         hasAudioDescription: newHasAudioDescription,
         translatedTitle: newTranslatedTitle,
+        selectedTags = [],
         privacy: newPrivacy,
       } = request.params;
       if (!captionId) {
@@ -473,12 +475,12 @@ Parse.Cloud.define(
       const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
       query.equalTo("objectId", captionId);
       query.equalTo("creatorId", user.id);
-      const result = await query.first({ useMasterKey: true });
-      if (!result) {
+      const existingCaption = await query.first({ useMasterKey: true });
+      if (!existingCaption) {
         return { status: "error", error: "No such caption" };
       }
       // Check whether we need to delete any raw file if the caption was raw and is now not.
-      const existingRawFile: Parse.File = result.get("rawFile");
+      const existingRawFile: Parse.File = existingCaption.get("rawFile");
       // If there's no raw caption after the update or the existing raw caption will be overwritten
       // delete the raw file
       if (
@@ -492,11 +494,11 @@ Parse.Cloud.define(
             `[updateCaption] Failed to delete existing raw file for caption: ${captionId}`
           );
         }
-        result.set("rawFile", null);
-        result.set("rawContent", null);
+        existingCaption.set("rawFile", null);
+        existingCaption.set("rawContent", null);
       }
       if (newRawCaption) {
-        result.set("content", JSON.stringify({ tracks: [] }));
+        existingCaption.set("content", JSON.stringify({ tracks: [] }));
       }
 
       const stringifiedCaption = JSON.stringify(newCaptionData || {});
@@ -533,45 +535,50 @@ Parse.Cloud.define(
       // TODO: refactor sanitization code
       let modifiedTranslatedTitle = !!newTranslatedTitle
         ? newTranslatedTitle.substring(0, MAX_VIDEO_TITLE_LENGTH)
-        : result.get("translatedTitle");
+        : existingCaption.get("translatedTitle");
 
       // Create the corresponding video object for this element
 
+      // #region Tags
       const tags: string[] = [];
       if (!isUndefinedOrNull(newHasAudioDescription)) {
         if (newHasAudioDescription) tags.push(captionTags.audioDescribed);
-        result.set("tags", tags);
       }
+      tags.push(...selectedTags);
+      existingCaption.set("tags", tags);
+      await addMissingCaptionTags(user.id, tags);
+      // #region Tags
 
       if (!isUndefinedOrNull(newPrivacy)) {
-        result.set("privacy", newPrivacy);
+        existingCaption.set("privacy", newPrivacy);
       }
 
-      result.set("translatedTitle", modifiedTranslatedTitle);
+      existingCaption.set("translatedTitle", modifiedTranslatedTitle);
       if (newCaptionData) {
-        result.set("content", stringifiedCaption);
+        existingCaption.set("content", stringifiedCaption);
       }
-      await result.save(null, { useMasterKey: true });
+      await existingCaption.save(null, { useMasterKey: true });
 
-      if (newRawCaption && result.id) {
+      if (newRawCaption && existingCaption.id) {
         let rawCaptionMeta = "";
         newRawCaption.data = "";
         rawCaptionMeta = JSON.stringify(newRawCaption);
         // Save the raw caption's data to a file
         let rawFile: Parse.File = new Parse.File(
-          sanitizeFilename(`${result.id}`),
+          sanitizeFilename(`${existingCaption.id}`),
           {
             // The raw data should already have been base64 compressed on the client's side
             base64: rawCaptionData,
           }
         );
         await rawFile.save();
-        result.set("rawContent", rawCaptionMeta);
-        result.set("rawFile", rawFile);
-        await result.save(null, { useMasterKey: true });
+        existingCaption.set("rawContent", rawCaptionMeta);
+        existingCaption.set("rawFile", rawFile);
+        await existingCaption.save(null, { useMasterKey: true });
       }
-      console.log("Updated caption id by", user.id, ":", result.id);
+      console.log("Updated caption id by", user.id, ":", existingCaption.id);
     } catch (e) {
+      console.error("[updateCaption]", e);
       return { status: "error", error: e.message };
     }
     return { status: "success" };
