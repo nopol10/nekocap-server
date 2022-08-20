@@ -42,6 +42,7 @@ export const getUserProfile = async (
     donationLink: captioner.get("donationLink"),
     languageCodes: captioner.get("languages"),
     captionCount: captioner.get("captionCount") || 0,
+    captionTags: captioner.get("captionTags") || [],
     isAdmin,
     isReviewer,
     isReviewerManager,

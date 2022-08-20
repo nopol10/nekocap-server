@@ -631,14 +631,15 @@ Parse.Cloud.define(
     }
     const { withCaptions = true } = request.params;
     const userId = request.user.id;
-    const outputSubs: CaptionListFields[] = withCaptions
+    const { result: outputSubs } = withCaptions
       ? await getCaptionerCaptions({
           captionerId: userId,
           limit: 50,
           offset: 0,
           userId: request.user.id,
+          tags: [],
         })
-      : [];
+      : { result: <CaptionListFields[]>[] };
     const profile: CaptionerFields = await getUserProfile(userId);
     const privateProfile: CaptionerPrivateFields = await getUserPrivateProfile(
       request.user.id,
@@ -662,17 +663,19 @@ Parse.Cloud.define(
   async (
     request: Parse.Cloud.FunctionRequest<CaptionsRequest>
   ): Promise<CaptionsResponse> => {
-    const { captionerId, limit, offset } = request.params;
-    const outputSubs: CaptionListFields[] = await getCaptionerCaptions({
+    const { captionerId, tags = [], limit, offset } = request.params;
+    const { result: outputSubs, hasMore } = await getCaptionerCaptions({
       captionerId,
       limit: limit || 50,
       offset: offset || 0,
       userId: request.user?.id,
+      tags,
     });
 
     return {
       status: "success",
       captions: outputSubs,
+      hasMore,
     };
   }
 );
@@ -787,14 +790,15 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<LoadProfileParams>
   ): Promise<PublicProfileResponse> => {
     const { withCaptions = true, profileId } = request.params;
-    const outputSubs: CaptionListFields[] = withCaptions
+    const { result: outputSubs } = withCaptions
       ? await getCaptionerCaptions({
           captionerId: profileId,
           limit: 50,
           offset: 0,
           userId: request.user?.id,
+          tags: [],
         })
-      : [];
+      : { result: <CaptionListFields[]>[] };
     const profile: CaptionerFields = await getUserProfile(profileId);
     return {
       status: "success",
@@ -1144,10 +1148,11 @@ Parse.Cloud.define(
       limit: 10,
       offset: 0,
       getRejected: false,
+      tags: [],
     });
     return <CaptionsResponse>{
       status: "success",
-      captions: outputSubs,
+      captions: outputSubs.result,
     };
   }
 );
@@ -1170,11 +1175,13 @@ Parse.Cloud.define(
       offset: 0,
       getRejected: false,
       languageCodes,
+      tags: [],
     });
 
     return {
       status: "success",
-      captions: outputSubs,
+      captions: outputSubs.result,
+      hasMore: false,
     };
   }
 );
@@ -1213,6 +1220,7 @@ Parse.Cloud.define(
     return {
       status: "success",
       captions: outputSubs,
+      hasMore: false,
     };
   }
 );
@@ -1478,10 +1486,11 @@ Parse.Cloud.define(
     request: Parse.Cloud.FunctionRequest<BrowseRequest>
   ): Promise<BrowseResponse> => {
     const { limit, offset } = request.params;
-    let captions = await getCaptions({
-      limit: limit + 1,
+    let { result: captions, hasMore } = await getCaptions({
+      limit: limit,
       offset,
       getRejected: false,
+      tags: [],
     });
 
     let count = undefined;
@@ -1490,16 +1499,19 @@ Parse.Cloud.define(
       count = await new Parse.Query(PARSE_CLASS.captions)
         .notEqualTo("rejected", true)
         .count({ useMasterKey: true });
-      captions = await getCaptions({
-        limit: limit,
-        offset: count - (count % limit),
-        getRejected: false,
-      });
+      captions = (
+        await getCaptions({
+          limit: limit,
+          offset: count - (count % limit),
+          getRejected: false,
+          tags: [],
+        })
+      ).result;
     }
     return {
       status: "success",
       captions: captions.slice(0, limit),
-      hasMoreResults: captions.length > limit,
+      hasMoreResults: hasMore,
       totalCount: count,
     };
   }

@@ -2,6 +2,7 @@ import {
   CaptionListFields,
   CaptionPrivacy,
 } from "@/common/feature/video/types";
+import { getCaptionGroupTagName } from "@/common/feature/video/utils";
 import { CaptionSchema } from "@/common/providers/parse/types";
 import { PARSE_CLASS } from "cloud/constants";
 import { CAPTION_DETAILS_JOIN_PIPELINE } from "./caption-details-join-pipeline";
@@ -20,6 +21,7 @@ export const getCaptions = async ({
   userId,
   getRejected = true,
   languageCodes,
+  tags = [],
 }: {
   limit: number;
   offset: number;
@@ -27,7 +29,8 @@ export const getCaptions = async ({
   userId?: string;
   getRejected: boolean;
   languageCodes?: string[];
-}): Promise<CaptionListFields[]> => {
+  tags: string[];
+}): Promise<{ result: CaptionListFields[]; hasMore: boolean }> => {
   const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
 
   const filters: {
@@ -35,6 +38,7 @@ export const getCaptions = async ({
     privacy?: any;
     rejected?: any;
     language?: any;
+    tags?: any;
   } = {};
   if (!!captionerId) {
     filters.creatorId = captionerId;
@@ -52,8 +56,16 @@ export const getCaptions = async ({
       $in: languageCodes,
     };
   }
+  if (tags.length > 0) {
+    const tagRegex = tags.reduce((acc, tag, i) => {
+      return acc + (i > 0 ? "|" : "") + `^g:${getCaptionGroupTagName(tag)}:.*$`;
+    }, "");
+    filters.tags = {
+      $regex: tagRegex,
+    };
+  }
 
-  const result = await Promise.all(
+  let result = await Promise.all(
     (
       await query.aggregate([
         {
@@ -66,7 +78,7 @@ export const getCaptions = async ({
           skip: offset,
         },
         {
-          limit: limit,
+          limit: limit + 1,
         },
         ...CAPTION_DETAILS_JOIN_PIPELINE,
       ])
@@ -74,7 +86,11 @@ export const getCaptions = async ({
       return await captionWithJoinedDataToListFields(caption);
     })
   );
-  return result;
+  const hasMore = result.length > limit;
+  return {
+    result: result.slice(0, limit),
+    hasMore,
+  };
 };
 
 /**
@@ -87,9 +103,10 @@ export const getCaptionerCaptions = async ({
   offset = 0,
   captionerId: captionerId,
   userId,
+  tags,
 }: Pick<
   Parameters<typeof getCaptions>[0],
-  "limit" | "offset" | "captionerId" | "userId"
+  "limit" | "offset" | "captionerId" | "userId" | "tags"
 >) => {
   return await getCaptions({
     limit,
@@ -97,5 +114,6 @@ export const getCaptionerCaptions = async ({
     captionerId,
     userId,
     getRejected: true,
+    tags,
   });
 };
