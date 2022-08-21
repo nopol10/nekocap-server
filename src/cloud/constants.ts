@@ -15,3 +15,5 @@ export const ERROR_MESSAGES = {
 };
 
 export const MAX_CAPTION_GROUP_TAG_NAME_LENGTH = 64;
+
+export const MAX_CAPTION_GROUP_TAG_LIMIT = 5;

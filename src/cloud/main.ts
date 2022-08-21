@@ -72,6 +72,7 @@ import sanitizeFilename from "sanitize-filename";
 import {
   CAPTION_SUBMISSION_COOLDOWN,
   ERROR_MESSAGES,
+  MAX_CAPTION_GROUP_TAG_LIMIT,
   PARSE_CLASS,
 } from "./constants";
 import { validateAss } from "./validator";
@@ -546,7 +547,12 @@ Parse.Cloud.define(
         if (newHasAudioDescription) tags.push(captionTags.audioDescribed);
       }
 
-      tags.push(...selectedTags.map(sanitizeTag).filter(Boolean));
+      tags.push(
+        ...selectedTags
+          .slice(0, MAX_CAPTION_GROUP_TAG_LIMIT)
+          .map(sanitizeTag)
+          .filter(Boolean)
+      );
       existingCaption.set("tags", tags);
       await addMissingCaptionTags(user.id, tags);
       // #region Tags
