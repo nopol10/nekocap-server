@@ -1505,16 +1505,17 @@ Parse.Cloud.define(
     if (captions.length <= 0 && offset > 0) {
       // Requested offset could be past the last page, try returning the last page
       count = await new Parse.Query(PARSE_CLASS.captions)
+        .containedIn("privacy", [undefined, CaptionPrivacy.Public])
         .notEqualTo("rejected", true)
         .count({ useMasterKey: true });
-      captions = (
-        await getCaptions({
-          limit: limit,
-          offset: count - (count % limit),
-          getRejected: false,
-          tags: [],
-        })
-      ).result;
+      const overshotCaptionResult = await getCaptions({
+        limit: limit,
+        offset: count - (count % limit),
+        getRejected: false,
+        tags: [],
+      });
+      captions = overshotCaptionResult.result;
+      hasMore = overshotCaptionResult.hasMore;
     }
     return {
       status: "success",
