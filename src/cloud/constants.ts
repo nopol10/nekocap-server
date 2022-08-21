@@ -13,3 +13,5 @@ export const ERROR_MESSAGES = {
   NOT_LOGGED_IN: "Not authorized! Please login",
   BANNED: "Not authorized! You are banned!",
 };
+
+export const MAX_CAPTION_GROUP_TAG_NAME_LENGTH = 64;

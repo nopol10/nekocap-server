@@ -86,6 +86,7 @@ import { captionToListFields } from "./captions/caption-to-list-field";
 import { getUserProfile } from "./users/get-user-profile";
 import { getCaptions, getCaptionerCaptions } from "./captions/get-captions";
 import { addMissingCaptionTags } from "./users/add-missing-tags";
+import { sanitizeTag } from "./utils/sanitize-tag";
 /**
  * Load the list of captions available for a video
  */
@@ -544,7 +545,8 @@ Parse.Cloud.define(
       if (!isUndefinedOrNull(newHasAudioDescription)) {
         if (newHasAudioDescription) tags.push(captionTags.audioDescribed);
       }
-      tags.push(...selectedTags);
+
+      tags.push(...selectedTags.map(sanitizeTag).filter(Boolean));
       existingCaption.set("tags", tags);
       await addMissingCaptionTags(user.id, tags);
       // #region Tags

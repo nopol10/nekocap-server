@@ -8,6 +8,8 @@ import { PARSE_CLASS } from "cloud/constants";
 import { CAPTION_DETAILS_JOIN_PIPELINE } from "./caption-details-join-pipeline";
 import { captionWithJoinedDataToListFields } from "./caption-to-list-field";
 
+const MAX_SEARCH_TAG_LIMIT = 5;
+
 /**
  * Retrieves an array CaptionListFields
  * For non captioner limited lists, cannot get non-public captions
@@ -57,9 +59,13 @@ export const getCaptions = async ({
     };
   }
   if (tags.length > 0) {
-    const tagRegex = tags.reduce((acc, tag, i) => {
-      return acc + (i > 0 ? "|" : "") + `^g:${getCaptionGroupTagName(tag)}:.*$`;
-    }, "");
+    const tagRegex = tags
+      .slice(0, MAX_SEARCH_TAG_LIMIT)
+      .reduce((acc, tag, i) => {
+        return (
+          acc + (i > 0 ? "|" : "") + `^g:${getCaptionGroupTagName(tag)}:.*$`
+        );
+      }, "");
     filters.tags = {
       $regex: tagRegex,
     };
