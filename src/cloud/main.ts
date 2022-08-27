@@ -445,7 +445,11 @@ Parse.Cloud.define(
       return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
     }
     try {
-      const { banned, verified } = await getUserProfile(user.id);
+      const {
+        banned,
+        verified,
+        captionTags: existingUserCaptionTags,
+      } = await getUserProfile(user.id);
       if (banned) {
         return { status: "error", error: ERROR_MESSAGES.BANNED };
       }
@@ -550,7 +554,7 @@ Parse.Cloud.define(
       tags.push(
         ...selectedTags
           .slice(0, MAX_CAPTION_GROUP_TAG_LIMIT)
-          .map(sanitizeTag)
+          .map((newTag) => sanitizeTag(newTag, existingUserCaptionTags))
           .filter(Boolean)
       );
       existingCaption.set("tags", tags);
