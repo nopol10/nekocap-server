@@ -59,8 +59,8 @@ export const captionWithJoinedDataToListFields = async (
   const videoId = sub.get("videoId");
   let videoName = video.name,
     videoLanguage = video.language,
-    createdDate = unixSeconds(new Date(video._created_at.iso)),
-    updatedDate = unixSeconds(new Date(video._updated_at.iso));
+    createdDate = unixSeconds(new Date(joinedCaption.createdAt)),
+    updatedDate = unixSeconds(new Date(joinedCaption.updatedAt));
 
   return <CaptionListFields>{
     id: sub.id,
