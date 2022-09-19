@@ -24,6 +24,7 @@
     "parse-server-firebase-auth": "^1.0.0",
     "phin": "^3.6.1",
     "sanitize-filename": "^1.6.3",
+    "throttled-queue": "^2.1.4",
     "youtube-dl-exec": "^1.2.4"
   },
   "scripts": {
