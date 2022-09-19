@@ -1,8 +1,4 @@
-import {
-  getAdminACL,
-  getPublicReadAdminACL,
-  getPublicReadAdminReviewerACL,
-} from "./acl";
+import { getPublicReadAdminACL, getAdminACL } from "cloud/acl";
 
 export async function createCaptionerWithoutUser({
   name,

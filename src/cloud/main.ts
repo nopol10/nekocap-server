@@ -88,6 +88,7 @@ import { getUserProfile } from "./users/get-user-profile";
 import { getCaptions, getCaptionerCaptions } from "./captions/get-captions";
 import { addMissingCaptionTags } from "./users/add-missing-tags";
 import { sanitizeTag } from "./utils/sanitize-tag";
+import "./users/user-apis";
 /**
  * Load the list of captions available for a video
  */

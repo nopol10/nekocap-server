@@ -9,7 +9,7 @@ import {
 import { getPublicReadAdminReviewerACL } from "./acl";
 import { isInMaintenanceMode } from "./config";
 import { PARSE_CLASS } from "./constants";
-import { createCaptionerWithoutUser } from "./user-apis";
+import { createCaptionerWithoutUser } from "./users/create-captioner-without-user";
 import { getVideoName } from "./utils";
 
 Parse.Cloud.define(
