@@ -20,7 +20,7 @@
     "lodash": "^4.17.20",
     "lz-string": "^1.4.4",
     "parse": "3.4.2",
-    "parse-server": "4.10.13",
+    "parse-server": "4.10.15",
     "parse-server-firebase-auth": "^1.0.0",
     "phin": "^3.6.1",
     "sanitize-filename": "^1.6.3",
