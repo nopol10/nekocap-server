@@ -49,6 +49,7 @@ var api = new ParseServer({
   liveQuery: {
     classNames: [],
   },
+  maxUploadSize: "100mb",
   logLevel: "error",
 });
 
