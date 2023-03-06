@@ -1521,6 +1521,8 @@ Parse.Cloud.define(
       });
       captions = overshotCaptionResult.result;
       hasMore = overshotCaptionResult.hasMore;
+    } else {
+      count = offset + captions.length;
     }
     return {
       status: "success",
