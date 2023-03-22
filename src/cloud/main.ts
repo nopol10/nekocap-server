@@ -128,6 +128,7 @@ Parse.Cloud.define(
             dislikes: result.get("dislikes") || 0,
             languageCode: result.get("language"),
             tags: result.get("tags") || [],
+            advanced: !!result.get("rawContent"),
           };
         })
       )

@@ -82,5 +82,6 @@ export const captionWithJoinedDataToListFields = async (
     updatedDate,
     tags: sub.get("tags") || [],
     privacy: sub.get("privacy") || 0,
+    advanced: !!sub.get("rawContent"),
   };
 };
