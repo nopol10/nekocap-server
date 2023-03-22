@@ -276,6 +276,7 @@ Parse.Cloud.define(
     if (await isInMaintenanceMode()) {
       return { status: "error", error: ERROR_MESSAGES.MAINTENANCE };
     }
+    let newCaptionId: string | undefined = undefined;
     try {
       const { banned, verified, lastSubmissionTime, name } =
         await getUserProfile(user.id);
@@ -413,6 +414,7 @@ Parse.Cloud.define(
       await newCaption.save(null, { useMasterKey: true });
 
       console.log("New caption id by", user.id, ":", newCaption.id);
+      newCaptionId = newCaption.id;
       if (rawCaptionData && newCaption.id) {
         let rawCaptionMeta = "";
         rawCaption.data = "";
@@ -433,7 +435,7 @@ Parse.Cloud.define(
     } catch (e) {
       return { status: "error", error: e.message };
     }
-    return { status: "success" };
+    return { status: "success", captionId: newCaptionId };
   }
 );
 
