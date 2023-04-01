@@ -1,3 +1,5 @@
+/// <reference path="../../../nekocap/src/declarations.d.ts" />
+// Above is needed due to references to globalThis in shared imports
 import type {
   LoadCaptionsResult,
   SubmitCaptionRequest,
