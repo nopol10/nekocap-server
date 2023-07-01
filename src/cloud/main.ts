@@ -1505,8 +1505,8 @@ Parse.Cloud.define(
   ): Promise<BrowseResponse> => {
     const { limit, offset } = request.params;
     let { result: captions, hasMore } = await getCaptions({
-      limit: limit,
-      offset,
+      limit: Math.min(limit || 0, 100),
+      offset: offset || 0,
       getRejected: false,
       tags: [],
     });
