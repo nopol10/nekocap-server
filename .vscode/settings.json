@@ -1,5 +1,5 @@
 {
     "editor.formatOnSave": true,
-    "prettier.prettierPath": "./node_modules/bin/prettier",
+    "prettier.prettierPath": "",
     "prettier.configPath": ".prettierrc.js"
 }

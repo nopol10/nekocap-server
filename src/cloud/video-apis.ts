@@ -5,15 +5,15 @@ import {
   AutoCaptionLanguage,
 } from "@/common/feature/caption-editor/types";
 import { baseLanguages, languages } from "@/common/languages";
-import youtubedl, { YtResponse } from "youtube-dl-exec";
+// import youtubedl, { YtResponse } from "youtube-dl-exec";
 import { allowAutoCaptioning } from "./config";
 
 type YtCaptionList = { [languageCode: string]: { ext: string; url: string }[] };
 
-type YtResponseWithCaptions = {
-  automatic_captions: YtCaptionList;
-  subtitles: YtCaptionList;
-} & YtResponse;
+// type YtResponseWithCaptions = {
+//   automatic_captions: YtCaptionList;
+//   subtitles: YtCaptionList;
+// } & YtResponse;
 
 const convertYoutubeCaptionListToNekoCapList = (
   captionList: YtCaptionList,
@@ -54,40 +54,40 @@ Parse.Cloud.define(
       return { captions: [], status: "success" };
     }
 
-    const youtubeDataResponse = (await youtubedl(
-      `https://www.youtube.com/watch?v=${videoId}`,
-      {
-        dumpSingleJson: true,
-        noWarnings: true,
-        noCallHome: true,
-        noCheckCertificate: true,
-        preferFreeFormats: true,
-        youtubeSkipDashManifest: true,
-        referer: `https://www.youtube.com/watch?v=${videoId}`,
-      }
-    )) as YtResponseWithCaptions;
-    let captions: AutoCaptionLanguage[] = [];
-    const { automatic_captions, subtitles } = youtubeDataResponse;
-    if (automatic_captions && Object.keys(automatic_captions).length > 0) {
-      captions = [
-        ...captions,
-        ...convertYoutubeCaptionListToNekoCapList(
-          automatic_captions,
-          " (Auto)",
-          true
-        ),
-      ];
-    }
-    if (subtitles && Object.keys(subtitles).length > 0) {
-      captions = [
-        ...captions,
-        ...convertYoutubeCaptionListToNekoCapList(subtitles, "", false),
-      ];
-    }
-    captions.sort((captionA, captionB) =>
-      captionA.name.localeCompare(captionB.name)
-    );
+    // const youtubeDataResponse = (await youtubedl(
+    //   `https://www.youtube.com/watch?v=${videoId}`,
+    //   {
+    //     dumpSingleJson: true,
+    //     noWarnings: true,
+    //     noCallHome: true,
+    //     noCheckCertificate: true,
+    //     preferFreeFormats: true,
+    //     youtubeSkipDashManifest: true,
+    //     referer: `https://www.youtube.com/watch?v=${videoId}`,
+    //   }
+    // )) as YtResponseWithCaptions;
+    // let captions: AutoCaptionLanguage[] = [];
+    // const { automatic_captions, subtitles } = youtubeDataResponse;
+    // if (automatic_captions && Object.keys(automatic_captions).length > 0) {
+    //   captions = [
+    //     ...captions,
+    //     ...convertYoutubeCaptionListToNekoCapList(
+    //       automatic_captions,
+    //       " (Auto)",
+    //       true
+    //     ),
+    //   ];
+    // }
+    // if (subtitles && Object.keys(subtitles).length > 0) {
+    //   captions = [
+    //     ...captions,
+    //     ...convertYoutubeCaptionListToNekoCapList(subtitles, "", false),
+    //   ];
+    // }
+    // captions.sort((captionA, captionB) =>
+    //   captionA.name.localeCompare(captionB.name)
+    // );
 
-    return { captions: captions, status: "success" };
+    // return { captions: captions, status: "success" };
   }
 );

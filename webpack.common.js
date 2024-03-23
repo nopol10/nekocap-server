@@ -13,6 +13,7 @@ const envKeys = Object.keys(env).reduce((prev, next) => {
   return prev;
 }, {});
 
+/** @type { import('webpack').Configuration } */
 module.exports = {
   target: "node",
   entry: {
@@ -21,6 +22,7 @@ module.exports = {
   output: {
     path: path.join(__dirname, "dist"),
     filename: "[name].js",
+    hashFunction: "sha512",
   },
   module: {
     rules: [
@@ -37,6 +39,7 @@ module.exports = {
       {
         test: /\.node?$/,
         use: "file-loader",
+        type: "javascript/auto",
       },
     ],
   },
@@ -85,11 +88,11 @@ module.exports = {
     ],
   },
   node: {
-    child_process: "empty",
-    fs: "empty",
-    crypto: "empty",
-    net: "empty",
-    tls: "empty",
+    // child_process: "empty",
+    // fs: "empty",
+    // crypto: "empty",
+    // net: "empty",
+    // tls: "empty",
     __dirname: false,
     __filename: false,
   },
