@@ -111,7 +111,7 @@ Parse.Cloud.define(
           }
           const captionerId = result.get("creatorId");
           const userQuery = new Parse.Query<CaptionerSchema>(
-            PARSE_CLASS.captioner
+            PARSE_CLASS.captioner,
           );
           userQuery.equalTo("userId", captionerId);
           const userResult = await userQuery.find();
@@ -132,10 +132,10 @@ Parse.Cloud.define(
             tags: result.get("tags") || [],
             advanced: !!result.get("rawContent"),
           };
-        })
+        }),
       )
     ).filter(Boolean);
-  }
+  },
 );
 
 const loadRawCaptionData = async (caption: CaptionSchema): Promise<string> => {
@@ -157,7 +157,7 @@ const loadRawCaptionData = async (caption: CaptionSchema): Promise<string> => {
 };
 
 const loadRawCaptionUrl = async (
-  caption: CaptionSchema
+  caption: CaptionSchema,
 ): Promise<{ url: string; type?: keyof typeof CaptionFileFormat }> => {
   const file: Parse.File | undefined = caption.get("rawFile");
   if (!file) {
@@ -177,7 +177,7 @@ const loadRawCaptionUrl = async (
 
 const loadCaption = async (
   captionId: string,
-  user?: Parse.User
+  user?: Parse.User,
 ): Promise<ServerSingleCaption | undefined> => {
   const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
   query.equalTo("objectId", captionId);
@@ -218,7 +218,7 @@ const loadCaption = async (
   const { id: userId } = user;
   const sessionToken = user.getSessionToken();
   const likesQuery = new Parse.Query<CaptionLikesSchema>(
-    PARSE_CLASS.captionLikes
+    PARSE_CLASS.captionLikes,
   );
   likesQuery.equalTo("userId", userId);
   const likesObjects = await likesQuery.find({ sessionToken });
@@ -255,7 +255,7 @@ const loadVideo = async (videoId: string, videoSource: string) => {
 Parse.Cloud.define(
   "loadCaption",
   async (
-    request: Parse.Cloud.FunctionRequest<{ captionId: string }>
+    request: Parse.Cloud.FunctionRequest<{ captionId: string }>,
   ): Promise<LoadSingleCaptionResponse> => {
     const { captionId } = request.params;
     const caption = await loadCaption(captionId);
@@ -263,13 +263,13 @@ Parse.Cloud.define(
       return undefined;
     }
     return { status: "success", ...caption };
-  }
+  },
 );
 
 Parse.Cloud.define(
   "submitCaption",
   async (
-    request: Parse.Cloud.FunctionRequest<SubmitCaptionRequest>
+    request: Parse.Cloud.FunctionRequest<SubmitCaptionRequest>,
   ): Promise<UploadResponse> => {
     const { user } = request;
     if (!user || !user.getSessionToken()) {
@@ -374,7 +374,7 @@ Parse.Cloud.define(
       const result = await query.find({ useMasterKey: true });
       if (result.length >= 2) {
         throw new Error(
-          "You already have 2 captions of the same language for this video!"
+          "You already have 2 captions of the same language for this video!",
         );
       }
 
@@ -422,14 +422,13 @@ Parse.Cloud.define(
         rawCaption.data = "";
         rawCaptionMeta = JSON.stringify(rawCaption);
         // Save the raw caption's data to a file
-        let rawFile: Parse.File = new Parse.File(
-          sanitizeFilename(`${newCaption.id}`),
-          {
-            // The raw data should already have been base64 compressed on the client's side
-            base64: rawCaptionData,
-          }
-        );
-        await rawFile.save();
+        const filename = sanitizeFilename(`${newCaption.id}`);
+        console.log("filename", filename);
+        let rawFile: Parse.File = new Parse.File(filename, {
+          // The raw data should already have been base64 compressed on the client's side
+          base64: rawCaptionData,
+        });
+        await rawFile.save({ sessionToken: user.getSessionToken() });
         newCaption.set("rawContent", rawCaptionMeta);
         newCaption.set("rawFile", rawFile);
         await newCaption.save(null, { useMasterKey: true });
@@ -438,13 +437,13 @@ Parse.Cloud.define(
       return { status: "error", error: e.message };
     }
     return { status: "success", captionId: newCaptionId };
-  }
+  },
 );
 
 Parse.Cloud.define(
   "updateCaption",
   async (
-    request: Parse.Cloud.FunctionRequest<UpdateCaptionRequest>
+    request: Parse.Cloud.FunctionRequest<UpdateCaptionRequest>,
   ): Promise<UploadResponse> => {
     const { user } = request;
     if (!user || !user.getSessionToken()) {
@@ -503,7 +502,7 @@ Parse.Cloud.define(
           await existingRawFile.destroy();
         } catch (e) {
           console.warn(
-            `[updateCaption] Failed to delete existing raw file for caption: ${captionId}`
+            `[updateCaption] Failed to delete existing raw file for caption: ${captionId}`,
           );
         }
         existingCaption.set("rawFile", null);
@@ -561,7 +560,7 @@ Parse.Cloud.define(
         ...selectedTags
           .slice(0, MAX_CAPTION_GROUP_TAG_LIMIT)
           .map((newTag) => sanitizeTag(newTag, existingUserCaptionTags))
-          .filter(Boolean)
+          .filter(Boolean),
       );
       existingCaption.set("tags", tags);
       await addMissingCaptionTags(user.id, tags);
@@ -587,9 +586,9 @@ Parse.Cloud.define(
           {
             // The raw data should already have been base64 compressed on the client's side
             base64: rawCaptionData,
-          }
+          },
         );
-        await rawFile.save();
+        await rawFile.save({ sessionToken: user.getSessionToken() });
         existingCaption.set("rawContent", rawCaptionMeta);
         existingCaption.set("rawFile", rawFile);
         await existingCaption.save(null, { useMasterKey: true });
@@ -600,16 +599,16 @@ Parse.Cloud.define(
       return { status: "error", error: e.message };
     }
     return { status: "success" };
-  }
+  },
 );
 
 const getUserPrivateProfile = async (
   targetUserId: string,
   sessionToken: string = undefined,
-  useMasterKey: boolean = undefined
+  useMasterKey: boolean = undefined,
 ): Promise<CaptionerPrivateFields> => {
   const query = new Parse.Query<CaptionerPrivateSchema>(
-    PARSE_CLASS.captionerPrivate
+    PARSE_CLASS.captionerPrivate,
   );
   query.equalTo("captionerId", targetUserId);
   const captioner = await query.first({
@@ -642,7 +641,7 @@ const getUserPrivateProfile = async (
 Parse.Cloud.define(
   "loadPrivateCaptionerData",
   async (
-    request: Parse.Cloud.FunctionRequest<LoadPrivateCaptionerDataRequestParams>
+    request: Parse.Cloud.FunctionRequest<LoadPrivateCaptionerDataRequestParams>,
   ): Promise<LoadPrivateCaptionerDataResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
       return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
@@ -662,7 +661,7 @@ Parse.Cloud.define(
     const privateProfile: CaptionerPrivateFields = await getUserPrivateProfile(
       request.user.id,
       request.user.getSessionToken(),
-      false
+      false,
     );
     return {
       status: "success",
@@ -670,7 +669,7 @@ Parse.Cloud.define(
       captioner: profile,
       privateProfile: privateProfile,
     };
-  }
+  },
 );
 
 /**
@@ -679,7 +678,7 @@ Parse.Cloud.define(
 Parse.Cloud.define(
   "loadUserCaptions",
   async (
-    request: Parse.Cloud.FunctionRequest<CaptionsRequest>
+    request: Parse.Cloud.FunctionRequest<CaptionsRequest>,
   ): Promise<CaptionsResponse> => {
     const { captionerId, tags = [], limit, offset } = request.params;
     const { result: outputSubs, hasMore } = await getCaptionerCaptions({
@@ -695,13 +694,13 @@ Parse.Cloud.define(
       captions: outputSubs,
       hasMore,
     };
-  }
+  },
 );
 
 Parse.Cloud.define(
   "updateCaptionerProfile",
   async (
-    request: Parse.Cloud.FunctionRequest<UpdateCaptionerProfileParams>
+    request: Parse.Cloud.FunctionRequest<UpdateCaptionerProfileParams>,
   ): Promise<LoadPrivateCaptionerDataResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
       return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
@@ -747,7 +746,7 @@ Parse.Cloud.define(
       for (let nameCheckAttempt = 0; nameCheckAttempt < 3; nameCheckAttempt++) {
         const randomTag = random(9999);
         const nameCheckQuery = new Parse.Query<CaptionerSchema>(
-          PARSE_CLASS.captioner
+          PARSE_CLASS.captioner,
         );
         nameCheckQuery.equalTo("name", name);
         nameCheckQuery.equalTo("nameTag", randomTag);
@@ -771,7 +770,7 @@ Parse.Cloud.define(
     await captioner.save(null, { useMasterKey: true });
 
     const privateQuery = new Parse.Query<CaptionerPrivateSchema>(
-      PARSE_CLASS.captionerPrivate
+      PARSE_CLASS.captionerPrivate,
     );
     privateQuery.equalTo("captionerId", userIdToUpdate);
     const captionerPrivateData = await privateQuery.first({ sessionToken });
@@ -787,7 +786,7 @@ Parse.Cloud.define(
     const privateProfile: CaptionerPrivateFields = await getUserPrivateProfile(
       userIdToUpdate,
       user.getSessionToken(),
-      isAdmin
+      isAdmin,
     );
     return {
       status: "success",
@@ -795,7 +794,7 @@ Parse.Cloud.define(
       captioner: profile,
       privateProfile: privateProfile,
     };
-  }
+  },
 );
 
 /**
@@ -805,7 +804,7 @@ Parse.Cloud.define(
 Parse.Cloud.define(
   "loadProfile",
   async (
-    request: Parse.Cloud.FunctionRequest<LoadProfileParams>
+    request: Parse.Cloud.FunctionRequest<LoadProfileParams>,
   ): Promise<PublicProfileResponse> => {
     const { withCaptions = true, profileId } = request.params;
     const { result: outputSubs } = withCaptions
@@ -823,13 +822,13 @@ Parse.Cloud.define(
       captions: outputSubs,
       captioner: profile,
     };
-  }
+  },
 );
 
 Parse.Cloud.define(
   "deleteCaption",
   async (
-    request: Parse.Cloud.FunctionRequest<{ captionId: string }>
+    request: Parse.Cloud.FunctionRequest<{ captionId: string }>,
   ): Promise<LoadPrivateCaptionerDataResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
       return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
@@ -858,11 +857,11 @@ Parse.Cloud.define(
     return {
       status: "success",
     };
-  }
+  },
 );
 
 const createCaptionLikesObject = async (
-  user: Parse.User
+  user: Parse.User,
 ): Promise<CaptionLikesSchema> => {
   const CaptionLikes = Parse.Object.extend(PARSE_CLASS.captionLikes);
   const captionLikes = new CaptionLikes();
@@ -888,7 +887,7 @@ const createCaptionLikesObject = async (
 Parse.Cloud.define(
   "likeCaption",
   async (
-    request: Parse.Cloud.FunctionRequest<{ captionId: string }>
+    request: Parse.Cloud.FunctionRequest<{ captionId: string }>,
   ): Promise<LoadPrivateCaptionerDataResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
       return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
@@ -914,7 +913,7 @@ Parse.Cloud.define(
     }
 
     const likesQuery = new Parse.Query<CaptionLikesSchema>(
-      PARSE_CLASS.captionLikes
+      PARSE_CLASS.captionLikes,
     );
     likesQuery.equalTo("userId", userId);
     const likesObjects = await likesQuery.find({ useMasterKey: true });
@@ -948,7 +947,7 @@ Parse.Cloud.define(
     return {
       status: "success",
     };
-  }
+  },
 );
 
 /**
@@ -965,7 +964,7 @@ Parse.Cloud.define(
 Parse.Cloud.define(
   "dislikeCaption",
   async (
-    request: Parse.Cloud.FunctionRequest<{ captionId: string }>
+    request: Parse.Cloud.FunctionRequest<{ captionId: string }>,
   ): Promise<LoadPrivateCaptionerDataResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
       return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
@@ -991,7 +990,7 @@ Parse.Cloud.define(
     }
 
     const likesQuery = new Parse.Query<CaptionLikesSchema>(
-      PARSE_CLASS.captionLikes
+      PARSE_CLASS.captionLikes,
     );
     likesQuery.equalTo("userId", userId);
     const likesObjects = await likesQuery.find({ useMasterKey: true });
@@ -1024,7 +1023,7 @@ Parse.Cloud.define(
     return {
       status: "success",
     };
-  }
+  },
 );
 
 /**
@@ -1033,7 +1032,7 @@ Parse.Cloud.define(
 Parse.Cloud.define(
   "rejectCaption",
   async (
-    request: Parse.Cloud.FunctionRequest<ReasonedCaptionAction>
+    request: Parse.Cloud.FunctionRequest<ReasonedCaptionAction>,
   ): Promise<ServerResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
       return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
@@ -1089,7 +1088,7 @@ Parse.Cloud.define(
     return {
       status: "success",
     };
-  }
+  },
 );
 
 /**
@@ -1098,7 +1097,7 @@ Parse.Cloud.define(
 Parse.Cloud.define(
   "verifyCaption",
   async (
-    request: Parse.Cloud.FunctionRequest<ReasonedCaptionAction>
+    request: Parse.Cloud.FunctionRequest<ReasonedCaptionAction>,
   ): Promise<ServerResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
       return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
@@ -1153,7 +1152,7 @@ Parse.Cloud.define(
     return {
       status: "success",
     };
-  }
+  },
 );
 
 /**
@@ -1172,7 +1171,7 @@ Parse.Cloud.define(
       status: "success",
       captions: outputSubs.result,
     };
-  }
+  },
 );
 
 /**
@@ -1182,7 +1181,7 @@ Parse.Cloud.define(
 Parse.Cloud.define(
   "loadLatestLanguageCaptions",
   async (
-    request: Parse.Cloud.FunctionRequest<{ languageCode: string }>
+    request: Parse.Cloud.FunctionRequest<{ languageCode: string }>,
   ): Promise<CaptionsResponse> => {
     const { languageCode } = request.params;
 
@@ -1201,7 +1200,7 @@ Parse.Cloud.define(
       captions: outputSubs.result,
       hasMore: false,
     };
-  }
+  },
 );
 
 /**
@@ -1224,7 +1223,7 @@ Parse.Cloud.define(
             return undefined;
           }
           return await captionToListFields(sub);
-        })
+        }),
       )
     )
       .filter((sub) => {
@@ -1240,13 +1239,13 @@ Parse.Cloud.define(
       captions: outputSubs,
       hasMore: false,
     };
-  }
+  },
 );
 
 Parse.Cloud.define(
   "loadCaptionForReview",
   async (
-    request: Parse.Cloud.FunctionRequest<{ captionId: string }>
+    request: Parse.Cloud.FunctionRequest<{ captionId: string }>,
   ): Promise<LoadCaptionForReviewResponse> => {
     const { captionId } = request.params;
     const caption = await loadCaption(captionId);
@@ -1264,7 +1263,7 @@ Parse.Cloud.define(
     const userProfile = await getUserProfile(caption.caption.get("creatorId"));
     const video = await loadVideo(
       caption.caption.get("videoId"),
-      caption.caption.get("videoSource")
+      caption.caption.get("videoSource"),
     );
     const videoName = video ? video.get("name") : "";
     return <LoadCaptionForReviewResponse>{
@@ -1273,7 +1272,7 @@ Parse.Cloud.define(
       captioner: userProfile,
       videoName,
     };
-  }
+  },
 );
 
 /**
@@ -1282,7 +1281,7 @@ Parse.Cloud.define(
 Parse.Cloud.define(
   "assignReviewerRole",
   async (
-    request: Parse.Cloud.FunctionRequest<RoleRequest>
+    request: Parse.Cloud.FunctionRequest<RoleRequest>,
   ): Promise<ServerResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
       return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
@@ -1322,7 +1321,7 @@ Parse.Cloud.define(
     return {
       status: "success",
     };
-  }
+  },
 );
 
 /**
@@ -1331,7 +1330,7 @@ Parse.Cloud.define(
 Parse.Cloud.define(
   "assignReviewerManagerRole",
   async (
-    request: Parse.Cloud.FunctionRequest<RoleRequest>
+    request: Parse.Cloud.FunctionRequest<RoleRequest>,
   ): Promise<ServerResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
       return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
@@ -1372,7 +1371,7 @@ Parse.Cloud.define(
     return {
       status: "success",
     };
-  }
+  },
 );
 
 /**
@@ -1381,7 +1380,7 @@ Parse.Cloud.define(
 Parse.Cloud.define(
   "search",
   async (
-    request: Parse.Cloud.FunctionRequest<SearchRequest>
+    request: Parse.Cloud.FunctionRequest<SearchRequest>,
   ): Promise<VideoSearchResponse> => {
     const { title, limit, offset } = request.params;
     let { videoLanguageCode = "any", captionLanguageCode = "any" } =
@@ -1397,24 +1396,24 @@ Parse.Cloud.define(
     const videoQuery = getVideoByTitleQuery(
       searchRegex,
       captionLanguageCode,
-      videoLanguageCode
+      videoLanguageCode,
     );
 
     const videosWithCaptionNames = await getVideoByCaptionTitleQuery(
       searchRegex,
       captionLanguageCode,
-      videoLanguageCode
+      videoLanguageCode,
     );
     const videosWithVideoIdQuery = await getVideoByVideoIdQuery(
       searchRegex,
       captionLanguageCode,
-      videoLanguageCode
+      videoLanguageCode,
     );
 
     const fullQuery = Parse.Query.or(
       ...[videoQuery, videosWithCaptionNames, videosWithVideoIdQuery].filter(
-        Boolean
-      )
+        Boolean,
+      ),
     )
       .descending("updatedAt")
       .limit(limit + 1)
@@ -1427,13 +1426,13 @@ Parse.Cloud.define(
       videos: videos.slice(0, limit),
       hasMoreResults: videos.length > limit,
     };
-  }
+  },
 );
 
 Parse.Cloud.define(
   "verifyCaptioner",
   async (
-    request: Parse.Cloud.FunctionRequest<VerifyRequest>
+    request: Parse.Cloud.FunctionRequest<VerifyRequest>,
   ): Promise<ServerResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
       return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
@@ -1459,13 +1458,13 @@ Parse.Cloud.define(
     return {
       status: "success",
     };
-  }
+  },
 );
 
 Parse.Cloud.define(
   "banCaptioner",
   async (
-    request: Parse.Cloud.FunctionRequest<VerifyRequest>
+    request: Parse.Cloud.FunctionRequest<VerifyRequest>,
   ): Promise<ServerResponse> => {
     if (!request.user || !request.user.getSessionToken()) {
       return { status: "error", error: ERROR_MESSAGES.NOT_LOGGED_IN };
@@ -1491,7 +1490,7 @@ Parse.Cloud.define(
     return {
       status: "success",
     };
-  }
+  },
 );
 
 /**
@@ -1501,7 +1500,7 @@ Parse.Cloud.define(
 Parse.Cloud.define(
   "browse",
   async (
-    request: Parse.Cloud.FunctionRequest<BrowseRequest>
+    request: Parse.Cloud.FunctionRequest<BrowseRequest>,
   ): Promise<BrowseResponse> => {
     const { limit, offset } = request.params;
     let { result: captions, hasMore } = await getCaptions({
@@ -1535,5 +1534,5 @@ Parse.Cloud.define(
       hasMoreResults: hasMore,
       totalCount: count,
     };
-  }
+  },
 );

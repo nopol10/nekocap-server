@@ -1,5 +1,5 @@
 # Run from parent directory of nekocap-server
-FROM node:16.19.0-alpine as build
+FROM node:18.19.1-alpine as build
 
 RUN mkdir nekocap-server
 RUN mkdir nekocap-server/parse
@@ -16,7 +16,7 @@ ARG CLOUD_CODE_MAIN=./cloud.js
 
 RUN npm run build
 
-FROM node:16.19.0-alpine as nekocap-server
+FROM node:18.19.1-alpine as nekocap-server
 RUN mkdir parse
 COPY --from=build /nekocap-server/dist /parse
 COPY --from=build /nekocap-server/node_modules /parse/node_modules

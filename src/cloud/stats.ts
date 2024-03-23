@@ -6,16 +6,16 @@ import { CAPTION_DETAILS_JOIN_PIPELINE } from "./captions/caption-details-join-p
 async function getTotalViews(): Promise<number> {
   const query = new Parse.Query(PARSE_CLASS.captions);
   const result = await query.aggregate({
-    group: { objectId: "", views: { $sum: "$views" } },
-  });
+    $group: { _id: "", views: { $sum: "$views" } },
+  } as Record<string, any>);
   return result[0]?.views || 0;
 }
 
 async function getTotalCaptions(): Promise<number> {
   const query = new Parse.Query(PARSE_CLASS.captions);
   const result = await query.aggregate({
-    group: { objectId: "", count: { $sum: 1 } },
-  });
+    $group: { _id: "", count: { $sum: 1 } },
+  } as Record<string, any>);
   return result[0]?.count || 0;
 }
 
@@ -24,15 +24,15 @@ async function getTotalViewsPerLanguage() {
   return (
     await query.aggregate([
       {
-        group: { objectId: "$language", views: { $sum: "$views" } },
+        $group: { _id: "$language", views: { $sum: "$views" } },
       },
       {
-        match: { views: { $gt: 0 } },
+        $match: { views: { $gt: 0 } },
       },
       {
-        sort: { views: -1 },
+        $sort: { views: -1 },
       },
-    ])
+    ] as Record<string, any>[])
   ).map((languageView: { views: number; objectId: string }) => {
     return {
       views: languageView.views,
@@ -46,12 +46,12 @@ async function getTotalCaptionsPerLanguage() {
   return (
     await query.aggregate([
       {
-        group: { objectId: "$language", count: { $sum: 1 } },
+        $group: { _id: "$language", count: { $sum: 1 } },
       },
       {
-        sort: { count: -1 },
+        $sort: { count: -1 },
       },
-    ])
+    ] as Record<string, any>[])
   ).map((languageView: { count: number; objectId: string }) => {
     return {
       count: languageView.count,
@@ -66,16 +66,16 @@ async function getTopCaptionsOfAllTime() {
     (
       await query.aggregate([
         {
-          sort: { views: -1 },
+          $sort: { views: -1 },
         },
         {
-          limit: 5,
+          $limit: 5,
         },
         ...CAPTION_DETAILS_JOIN_PIPELINE,
-      ])
+      ] as Record<string, any>[])
     ).map(async (caption: Record<string, any>) => {
       return await captionWithJoinedDataToListFields(caption);
-    })
+    }),
   );
 }
 
@@ -84,25 +84,25 @@ async function getTopCaptionsUploadedThisMonth() {
   const thisMonth = new Date(
     new Date().getFullYear(),
     new Date().getMonth(),
-    1
+    1,
   );
   return Promise.all(
     (
       await query.aggregate([
         {
-          match: { createdAt: { $gte: thisMonth } },
+          $match: { createdAt: { $gte: thisMonth } },
         },
         {
-          sort: { views: -1 },
+          $sort: { views: -1 },
         },
         {
-          limit: 5,
+          $limit: 5,
         },
         ...CAPTION_DETAILS_JOIN_PIPELINE,
-      ])
+      ] as Record<string, any>[])
     ).map(async (caption: Record<string, any>) => {
       return await captionWithJoinedDataToListFields(caption);
-    })
+    }),
   );
 }
 
@@ -136,5 +136,5 @@ Parse.Cloud.define(
         topCaptionsUploadedThisMonth,
       },
     };
-  }
+  },
 );

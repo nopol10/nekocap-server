@@ -1,6 +1,6 @@
 export const CAPTION_DETAILS_JOIN_PIPELINE = [
   {
-    lookup: {
+    $lookup: {
       from: "videos",
       // localField: "videoId",
       // foreignField: "sourceId",
@@ -14,10 +14,10 @@ export const CAPTION_DETAILS_JOIN_PIPELINE = [
     },
   },
   {
-    unwind: { path: "$video", preserveNullAndEmptyArrays: true },
+    $unwind: { path: "$video", preserveNullAndEmptyArrays: true },
   },
   {
-    lookup: {
+    $lookup: {
       from: "captioner",
       // localField: "creatorId",
       // foreignField: "userId",
@@ -30,6 +30,6 @@ export const CAPTION_DETAILS_JOIN_PIPELINE = [
     },
   },
   {
-    unwind: { path: "$captioner", preserveNullAndEmptyArrays: true },
+    $unwind: { path: "$captioner", preserveNullAndEmptyArrays: true },
   },
 ];

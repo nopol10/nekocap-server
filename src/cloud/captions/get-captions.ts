@@ -5,7 +5,6 @@ import {
 import { getCaptionGroupTagName } from "@/common/feature/video/utils";
 import { CaptionSchema } from "@/common/providers/parse/types";
 import { PARSE_CLASS } from "cloud/constants";
-import { Query } from "parse/node";
 import { CAPTION_DETAILS_JOIN_PIPELINE } from "./caption-details-join-pipeline";
 import { captionWithJoinedDataToListFields } from "./caption-to-list-field";
 
@@ -24,7 +23,7 @@ type GetCaptionBaseParam = {
 type GetCaptionsWithCountOnly = (param: GetCaptionBaseParam) => Promise<number>;
 
 type GetCaptionsWithDetails = (
-  param: GetCaptionBaseParam
+  param: GetCaptionBaseParam,
 ) => Promise<{ result: CaptionListFields[]; hasMore: boolean }>;
 
 const getCaptionResult = async ({
@@ -73,20 +72,20 @@ const getCaptionResult = async ({
       $regex: tagRegex,
     };
   }
-  const stages: Query.AggregationOptions[] = [
+  const stages: Record<string, any>[] = [
     {
-      match: filters,
+      $match: filters,
     },
     {
-      sort: { _created_at: -1 },
+      $sort: { _created_at: -1 },
     },
     {
-      skip: offset,
+      $skip: offset,
     },
   ];
   if (limit >= 0) {
     stages.push({
-      limit: limit + 1,
+      $limit: limit + 1,
     });
   }
   stages.push(...CAPTION_DETAILS_JOIN_PIPELINE);
@@ -103,11 +102,11 @@ const getCaptionResult = async ({
  */
 export const getCaptions: GetCaptionsWithDetails = async (param) => {
   let result = await Promise.all(
-    (
-      await getCaptionResult(param)
-    ).map(async (caption: Record<string, any>, i: number) => {
-      return await captionWithJoinedDataToListFields(caption);
-    })
+    (await getCaptionResult(param)).map(
+      async (caption: Record<string, any>, i: number) => {
+        return await captionWithJoinedDataToListFields(caption);
+      },
+    ),
   );
   const { limit } = param;
   const hasMore = limit >= 0 ? result.length > limit : false;
