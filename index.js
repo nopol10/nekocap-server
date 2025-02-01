@@ -71,7 +71,7 @@ async function start() {
   app.use(mountPath, server.app);
 
   Sentry.init({
-    dsn: process.env.SENTRY_DSN,
+    dsn: process.env.BACKEND_SENTRY_DSN,
     integrations: [
       // enable HTTP calls tracing
       new Sentry.Integrations.Http({ tracing: true }),
