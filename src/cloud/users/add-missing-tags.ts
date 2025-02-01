@@ -1,11 +1,11 @@
 import { getCaptionGroupTagName } from "@/common/feature/video/utils";
 import { CaptionerSchema } from "@/common/providers/parse/types";
 import { PARSE_CLASS } from "cloud/constants";
-import { differenceBy } from "lodash";
+import { differenceBy } from "lodash-es";
 
 export async function addMissingCaptionTags(
   creatorId: string,
-  tags?: string[]
+  tags?: string[],
 ) {
   if (!creatorId || !tags || tags.length <= 0) {
     return;
@@ -35,7 +35,7 @@ export async function addMissingCaptionTags(
   const newTags = differenceBy(
     incomingMappedTags,
     existingMappedTags,
-    "name"
+    "name",
   ).map((tag) => tag.tag);
   captioner.set("captionTags", [...existingTags, ...newTags]);
   await captioner.save(null, { useMasterKey: true });

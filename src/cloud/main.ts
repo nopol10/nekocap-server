@@ -50,7 +50,7 @@ import {
   isUndefinedOrNull,
   unixSeconds,
 } from "./utils";
-import { random } from "lodash";
+import { random } from "lodash-es";
 import { decompressFromBase64 } from "lz-string";
 import { getAdminACL, getPublicReadAdminReviewerACL } from "./acl";
 import "./hooks.ts";
