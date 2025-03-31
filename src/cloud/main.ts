@@ -1,44 +1,82 @@
 /// <reference path="../../../nekocap/src/declarations.d.ts" />
 // Above is needed due to references to globalThis in shared imports
-import type {
-  LoadCaptionsResult,
-  SubmitCaptionRequest,
-  CaptionListFields,
-  RawCaptionData,
-  UpdateCaptionRequest,
-} from "@/common/feature/video/types";
-import { CaptionPrivacy } from "@/common/feature/video/types";
-import type { LoadProfileParams } from "@/common/feature/profile/types";
-import type {
-  CaptionLikesSchema,
-  CaptionSchema,
-  CaptionerPrivateSchema,
-  CaptionerSchema,
-  LoadSingleCaptionResponse,
-  ServerSingleCaption,
-  VideoSchema,
-  VideoSearchResponse,
-  LoadCaptionForReviewResponse,
-  PublicProfileResponse,
-  BrowseResponse,
-} from "@/common/providers/parse/types";
-import type {
-  CaptionsRequest,
-  CaptionerFields,
-  CaptionerPrivateFields,
-  LoadPrivateCaptionerDataResponse,
-  UpdateCaptionerProfileParams,
-  CaptionsResponse,
-  RoleRequest,
-  LoadPrivateCaptionerDataRequestParams,
-  VerifyRequest,
-} from "@/common/feature/captioner/types";
+import { isAss } from "@/common/caption-utils";
+import { captionTags } from "@/common/constants";
+import {
+  MAX_CAPTION_FILE_BYTES,
+  MAX_VERIFIED_CAPTION_FILE_BYTES,
+  MAX_VIDEO_TITLE_LENGTH,
+} from "@/common/feature/caption-editor/constants";
 import type {
   ReasonedCaptionAction,
   ReviewActionDetails,
 } from "@/common/feature/caption-review/types";
-import type { SearchRequest } from "@/common/feature/search/types";
+import type {
+  CaptionerFields,
+  CaptionerPrivateFields,
+  CaptionsRequest,
+  CaptionsResponse,
+  LoadPrivateCaptionerDataRequestParams,
+  LoadPrivateCaptionerDataResponse,
+  RoleRequest,
+  UpdateCaptionerProfileParams,
+  VerifyRequest,
+} from "@/common/feature/captioner/types";
+import type { LoadProfileParams } from "@/common/feature/profile/types";
 import type { BrowseRequest } from "@/common/feature/public-dashboard/types";
+import type { SearchRequest } from "@/common/feature/search/types";
+import type {
+  CaptionListFields,
+  LoadCaptionsResult,
+  RawCaptionData,
+  SubmitCaptionRequest,
+  UpdateCaptionRequest,
+} from "@/common/feature/video/types";
+import { CaptionPrivacy } from "@/common/feature/video/types";
+import { languages } from "@/common/languages";
+import type {
+  BrowseResponse,
+  CaptionLikesSchema,
+  CaptionSchema,
+  CaptionerPrivateSchema,
+  CaptionerSchema,
+  LoadCaptionForReviewResponse,
+  LoadSingleCaptionResponse,
+  PublicProfileResponse,
+  ServerSingleCaption,
+  VideoSchema,
+  VideoSearchResponse,
+} from "@/common/providers/parse/types";
+import type {
+  CaptionFileFormat,
+  ServerResponse,
+  UploadResponse,
+} from "@/common/types";
+import { random } from "lodash-es";
+import { decompressFromBase64 } from "lz-string";
+import sanitizeFilename from "sanitize-filename";
+import { getAdminACL, getPublicReadAdminReviewerACL } from "./acl";
+import { captionToListFields } from "./captions/caption-to-list-field";
+import { getCaptionerCaptions, getCaptions } from "./captions/get-captions";
+import { isInMaintenanceMode } from "./config";
+import {
+  CAPTION_SUBMISSION_COOLDOWN,
+  ERROR_MESSAGES,
+  MAX_CAPTION_GROUP_TAG_LIMIT,
+  PARSE_CLASS,
+} from "./constants";
+import "./hooks.ts";
+import "./migration.ts";
+import { role } from "./roles";
+import {
+  getVideoByCaptionTitleQuery,
+  getVideoByTitleQuery,
+  getVideoByVideoIdQuery,
+} from "./search";
+import "./stats.ts";
+import { addMissingCaptionTags } from "./users/add-missing-tags";
+import { getUserProfile } from "./users/get-user-profile";
+import "./users/user-apis";
 import {
   canViewCaption,
   escapeRegexInString,
@@ -50,47 +88,9 @@ import {
   isUndefinedOrNull,
   unixSeconds,
 } from "./utils";
-import { random } from "lodash-es";
-import { decompressFromBase64 } from "lz-string";
-import { getAdminACL, getPublicReadAdminReviewerACL } from "./acl";
-import "./hooks.ts";
-import "./video-apis.ts";
-import "./migration.ts";
-import "./stats.ts";
-import type {
-  CaptionFileFormat,
-  ServerResponse,
-  UploadResponse,
-} from "@/common/types";
-import { isAss } from "@/common/caption-utils";
-import { captionTags } from "@/common/constants";
-import { role } from "./roles";
-import {
-  MAX_CAPTION_FILE_BYTES,
-  MAX_VERIFIED_CAPTION_FILE_BYTES,
-  MAX_VIDEO_TITLE_LENGTH,
-} from "@/common/feature/caption-editor/constants";
-import sanitizeFilename from "sanitize-filename";
-import {
-  CAPTION_SUBMISSION_COOLDOWN,
-  ERROR_MESSAGES,
-  MAX_CAPTION_GROUP_TAG_LIMIT,
-  PARSE_CLASS,
-} from "./constants";
-import { validateAss } from "./validator";
-import {
-  getVideoByCaptionTitleQuery,
-  getVideoByTitleQuery,
-  getVideoByVideoIdQuery,
-} from "./search";
-import { isInMaintenanceMode } from "./config";
-import { languages } from "@/common/languages";
-import { captionToListFields } from "./captions/caption-to-list-field";
-import { getUserProfile } from "./users/get-user-profile";
-import { getCaptions, getCaptionerCaptions } from "./captions/get-captions";
-import { addMissingCaptionTags } from "./users/add-missing-tags";
 import { sanitizeTag } from "./utils/sanitize-tag";
-import "./users/user-apis";
+import { validateAss } from "./validator";
+import "./video-apis.ts";
 /**
  * Load the list of captions available for a video
  */
