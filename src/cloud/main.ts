@@ -32,7 +32,10 @@ import type {
   SubmitCaptionRequest,
   UpdateCaptionRequest,
 } from "@/common/feature/video/types";
-import { CaptionPrivacy } from "@/common/feature/video/types";
+import {
+  CaptionPrivacy,
+  WebSourceToVideoSourceMap,
+} from "@/common/feature/video/types";
 import { languages } from "@/common/languages";
 import type {
   BrowseResponse,
@@ -338,12 +341,12 @@ Parse.Cloud.define(
       ) {
         throw new Error("Captions exceed size limit!");
       }
-      const source = caption.videoSource.toString();
-
+      const actualVideoSource =
+        WebSourceToVideoSourceMap[caption.videoSource] ?? caption.videoSource;
+      const source = actualVideoSource.toString();
       // Sanitize the input data a little just in case
       let {
         videoId,
-        videoSource,
         languageCode: captionLanguageCode,
         translatedTitle,
       } = caption;
@@ -354,12 +357,12 @@ Parse.Cloud.define(
         !captionLanguageCode ||
         videoId === undefined ||
         videoId.length <= 0 ||
-        videoSource === undefined
+        actualVideoSource === undefined
       ) {
         throw new Error("Missing information in submitted caption!");
       }
       videoId = videoId.substring(0, 256);
-      const videoSourceString = videoSource.toString().substring(0, 2);
+      const videoSourceString = source.substring(0, 6);
       captionLanguageCode = captionLanguageCode.substring(0, 20);
       translatedTitle = translatedTitle.substring(0, MAX_VIDEO_TITLE_LENGTH);
 
@@ -385,7 +388,7 @@ Parse.Cloud.define(
       const videoResult = await videoQuery.first();
       if (!videoResult) {
         videoName =
-          (await getVideoName(videoSource, videoId)) ||
+          (await getVideoName(caption.videoSource, videoId)) ||
           videoName.substring(0, 100);
         const Video = Parse.Object.extend(PARSE_CLASS.videos);
         const newVideo = new Video();
