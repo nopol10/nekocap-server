@@ -19,8 +19,8 @@
     "lodash-es": "4.17.21",
     "lz-string": "1.5.0",
     "parse": "6.1.0",
-    "parse-server": "8.6.2",
-    "parse-server-firebase-auth": "2.0.0",
+    "parse-server": "9.1.1",
+    "parse-server-firebase-auth": "3.0.0",
     "sanitize-filename": "1.6.3",
     "throttled-queue": "2.1.4"
   },
