@@ -18,7 +18,7 @@
     "helmet": "^4.2.0",
     "lodash-es": "4.17.21",
     "lz-string": "1.5.0",
-    "parse": "6.1.0",
+    "parse": "8.5.0",
     "parse-server": "9.5.1",
     "parse-server-firebase-auth": "3.0.1",
     "sanitize-filename": "1.6.3",
