@@ -683,13 +683,20 @@ Parse.Cloud.define(
   async (
     request: Parse.Cloud.FunctionRequest<CaptionsRequest>,
   ): Promise<CaptionsResponse> => {
-    const { captionerId, tags = [], limit, offset } = request.params;
+    const {
+      captionerId,
+      tags = [],
+      limit,
+      offset,
+      advancedFilter,
+    } = request.params;
     const { result: outputSubs, hasMore } = await getCaptionerCaptions({
       captionerId,
       limit: limit || 50,
       offset: offset || 0,
       userId: request.user?.id,
       tags,
+      advancedFilter,
     });
 
     return {

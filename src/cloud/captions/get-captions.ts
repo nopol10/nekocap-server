@@ -10,6 +10,8 @@ import { captionWithJoinedDataToListFields } from "./caption-to-list-field";
 
 const MAX_SEARCH_TAG_LIMIT = 5;
 
+export type AdvancedFilter = "all" | "advanced" | "nonAdvanced";
+
 type GetCaptionBaseParam = {
   limit: number;
   offset: number;
@@ -18,6 +20,7 @@ type GetCaptionBaseParam = {
   getRejected: boolean;
   languageCodes?: string[];
   tags: string[];
+  advancedFilter?: AdvancedFilter;
 };
 
 type GetCaptionsWithCountOnly = (param: GetCaptionBaseParam) => Promise<number>;
@@ -34,6 +37,7 @@ const getCaptionResult = async ({
   getRejected = true,
   languageCodes,
   tags = [],
+  advancedFilter = "all",
 }: GetCaptionBaseParam) => {
   const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
 
@@ -72,9 +76,25 @@ const getCaptionResult = async ({
       $regex: tagRegex,
     };
   }
+  const matchStage: Record<string, any> =
+    advancedFilter === "advanced"
+      ? { ...filters, rawContent: { $exists: true, $nin: [null, ""] } }
+      : advancedFilter === "nonAdvanced"
+        ? {
+            $and: [
+              filters,
+              {
+                $or: [
+                  { rawContent: { $exists: false } },
+                  { rawContent: { $in: [null, ""] } },
+                ],
+              },
+            ],
+          }
+        : filters;
   const stages: Record<string, any>[] = [
     {
-      $match: filters,
+      $match: matchStage,
     },
     {
       $sort: { _created_at: -1 },
@@ -131,9 +151,10 @@ export const getCaptionerCaptions = async ({
   captionerId: captionerId,
   userId,
   tags,
+  advancedFilter,
 }: Pick<
   Parameters<typeof getCaptions>[0],
-  "limit" | "offset" | "captionerId" | "userId" | "tags"
+  "limit" | "offset" | "captionerId" | "userId" | "tags" | "advancedFilter"
 >) => {
   return await getCaptions({
     limit,
@@ -142,5 +163,6 @@ export const getCaptionerCaptions = async ({
     userId,
     getRejected: true,
     tags,
+    advancedFilter,
   });
 };
