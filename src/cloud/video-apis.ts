@@ -21,18 +21,22 @@ const convertYoutubeCaptionListToNekoCapList = (
   isAutomaticCaption: boolean = false
 ) => {
   return Object.keys(captionList)
-    .map((language: keyof typeof languages) => {
-      const item = captionList[language].find(
+    .map((language) => {
+      let lang = language as keyof typeof languages;
+      const item = captionList[lang]?.find(
         (captionType) => captionType.ext === "srv1"
       );
-      language = language.replace("-", "_").trim() as keyof typeof languages;
-      if (!languages[language] && !baseLanguages[language]) {
+      lang = language.replace("-", "_").trim() as keyof typeof languages;
+      if (!languages[lang] && !baseLanguages[lang]) {
+        return null;
+      }
+      if (!item) {
         return null;
       }
       return {
         id: item.url,
-        language: language,
-        name: (languages[language] || baseLanguages[language]) + suffix,
+        language: lang,
+        name: (languages[lang] || baseLanguages[lang]) + suffix,
         isAutomaticCaption,
       };
     })
@@ -53,6 +57,7 @@ Parse.Cloud.define(
     if (!(await allowAutoCaptioning())) {
       return { captions: [], status: "success" };
     }
+    return { captions: [], status: "success" };
 
     // const youtubeDataResponse = (await youtubedl(
     //   `https://www.youtube.com/watch?v=${videoId}`,

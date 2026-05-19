@@ -1,6 +1,7 @@
 import { getCaptionGroupTagName } from "@/common/feature/video/utils";
 import { CaptionerSchema } from "@/common/providers/parse/types";
 import { PARSE_CLASS } from "cloud/constants";
+import { isTruthy } from "cloud/utils";
 import { differenceBy } from "lodash-es";
 
 export async function addMissingCaptionTags(
@@ -30,7 +31,7 @@ export async function addMissingCaptionTags(
       }
       return { name, tag };
     })
-    .filter(Boolean);
+    .filter(isTruthy);
 
   const newTags = differenceBy(
     incomingMappedTags,

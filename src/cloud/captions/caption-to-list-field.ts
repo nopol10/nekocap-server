@@ -5,7 +5,7 @@ import { getUserProfile } from "cloud/users/get-user-profile";
 import { unixSeconds } from "cloud/utils";
 
 export const captionToListFields = async (
-  sub: CaptionSchema
+  sub: CaptionSchema,
 ): Promise<CaptionListFields> => {
   const videoId = sub.get("videoId");
   const videoQuery = new Parse.Query<VideoSchema>(PARSE_CLASS.videos);
@@ -19,8 +19,8 @@ export const captionToListFields = async (
     videoName = video.get("name");
     videoLanguage = video.get("language");
   }
-  createdDate = unixSeconds(sub.createdAt);
-  updatedDate = unixSeconds(sub.updatedAt);
+  createdDate = unixSeconds(sub.createdAt || new Date());
+  updatedDate = unixSeconds(sub.updatedAt || new Date());
   const creatorId = sub.get("creatorId");
   const captioner = await getUserProfile(creatorId);
 
@@ -48,7 +48,7 @@ export const captionToListFields = async (
 };
 
 export const captionWithJoinedDataToListFields = async (
-  joinedCaption: Record<string, any>
+  joinedCaption: Record<string, any>,
 ): Promise<CaptionListFields> => {
   const video = joinedCaption.video;
 
