@@ -2,17 +2,22 @@
  * Parse Cloud Code type definitions.
  *
  * `@types/parse` ships a `Parse.Cloud` namespace, but those typings describe
- * the client SDK: they omit several trigger-registration functions and only
- * approximate the request objects parse-server passes to Cloud Code handlers.
+ * the client SDK: they omit several trigger-registration functions, type some
+ * handlers too narrowly, and only approximate the request objects parse-server
+ * passes to Cloud Code handlers.
  *
  * This file augments `Parse.Cloud` to match the server-side API as implemented
  * in parse-community/parse-server (`src/cloud-code/Parse.Cloud.js` and
  * `src/triggers.js`), targeting parse-server 9.x — the version this project
  * runs (see `package.json`).
  *
- * Augmented interfaces only ADD members via declaration merging; fields are
- * declared optional so the merge never conflicts with `@types/parse` and so
- * code that builds partial request objects (tests, mocks) keeps compiling.
+ * The declarations merge with `@types/parse`:
+ * - Interface augmentations only ADD members, declared optional so the merge
+ *   never conflicts and partial request objects (tests, mocks) keep compiling.
+ * - Function declarations add overloads. parse-server is more permissive than
+ *   the SDK typings (e.g. `beforeSave` accepts `Parse.File`, a handler may
+ *   return the modified object/query), so the extra overloads accept calls the
+ *   SDK typings would reject without breaking calls they already allow.
  */
 /// <reference types="parse" />
 export {};
@@ -20,6 +25,8 @@ export {};
 declare global {
   namespace Parse {
     namespace Cloud {
+      // === Shared helper types ===========================================
+
       /** Logger handed to handlers as `request.log`. */
       interface CloudCodeLogger {
         info(...args: unknown[]): void;
@@ -41,6 +48,23 @@ declare global {
       /** Mutable object shared between the triggers of a single request. */
       type CloudCodeContext = Record<string, unknown>;
 
+      /** Return contract of a trigger/job handler: `R`, or a promise of `R`. */
+      type TriggerResult<R = void> = R | Promise<R>;
+
+      /**
+       * A Parse class accepted by a trigger registration: either the class
+       * name or the class constructor (e.g. `"captions"`, `Parse.User`).
+       */
+      type TriggerClass<T> = string | (new (...args: any[]) => T);
+
+      /** Validator argument accepted as the last parameter of every trigger. */
+      type ValidatorOrHandler<Req> =
+        | Validator
+        | ((request: Req) => unknown);
+
+      // === Validator =====================================================
+      // `@types/parse` already declares requireUser/requireMaster/fields/etc.
+
       /**
        * Rate-limit options accepted on a {@link Validator} `rateLimit` field.
        * Mirrors parse-server's `RateLimitOptions`.
@@ -54,6 +78,13 @@ declare global {
         redisUrl?: string;
       }
 
+      interface Validator {
+        /** Per-function rate limiting applied before the handler runs. */
+        rateLimit?: ValidatorRateLimitOptions;
+      }
+
+      // === Request object augmentations ==================================
+
       /**
        * Legacy callback-style response object. Modern Cloud Code is
        * promise-based and resolves a value instead of calling these, but
@@ -66,14 +97,7 @@ declare global {
         header(name: string, value?: string): FunctionResponse;
       }
 
-      // --- Validator -------------------------------------------------------
-      // `@types/parse` already declares requireUser/requireMaster/fields/etc.
-      interface Validator {
-        /** Per-function rate limiting applied before the handler runs. */
-        rateLimit?: ValidatorRateLimitOptions;
-      }
-
-      // --- Cloud Function request -----------------------------------------
+      // Cloud Function request.
       // `@types/parse` already declares installationId/master/params/user.
       interface FunctionRequest<T extends Params = Params> {
         /** True when the request authenticated with the read-only master key. */
@@ -92,7 +116,7 @@ declare global {
         config?: CloudCodeConfig;
       }
 
-      // --- Job request -----------------------------------------------------
+      // Job request.
       // `@types/parse` already declares params/message.
       interface JobRequest<T extends Params = Params> {
         /** Name of the job being executed. */
@@ -103,7 +127,7 @@ declare global {
         config?: CloudCodeConfig;
       }
 
-      // --- Generic trigger request ----------------------------------------
+      // Generic trigger request.
       // `@types/parse` already declares installationId/master/user/ip/headers/
       // triggerName/log/object/original.
       interface TriggerRequest<T = Object> {
@@ -117,10 +141,10 @@ declare global {
         config?: CloudCodeConfig;
       }
 
-      // --- Save/delete trigger requests -----------------------------------
+      // Save/delete trigger requests.
       // `@types/parse` declares `context` on Before/AfterSaveRequest only;
-      // parse-server also forwards `config` (and `context` on delete triggers,
-      // inherited from the TriggerRequest augmentation above).
+      // parse-server also forwards `config`, and `context` on delete triggers
+      // (the latter inherited from the TriggerRequest augmentation above).
       interface BeforeSaveRequest<T = Object> {
         config?: CloudCodeConfig;
       }
@@ -134,7 +158,7 @@ declare global {
         config?: CloudCodeConfig;
       }
 
-      // --- Find trigger requests ------------------------------------------
+      // Find trigger requests.
       // `@types/parse` declares query/count/isGet/readPreference on
       // BeforeFindRequest and `objects` on AfterFindRequest.
       interface BeforeFindRequest<T extends Object = Object> {
@@ -149,7 +173,7 @@ declare global {
         results?: T[];
       }
 
-      // --- File trigger request -------------------------------------------
+      // File trigger request.
       // `@types/parse` declares file/fileSize/contentLength.
       interface FileTriggerRequest {
         config?: CloudCodeConfig;
@@ -216,50 +240,155 @@ declare global {
         object?: Object;
       }
 
+      // === Trigger & function registration ===============================
+      // Overloads added alongside the `@types/parse` declarations. parse-server
+      // accepts these forms; the SDK typings do not cover all of them.
+
       /**
-       * Generic, fully-typed Cloud Function registration. Adds an overload to
-       * the ones in `@types/parse` so a handler can infer both its params (P)
-       * and its resolved return type (R).
+       * Registers a Cloud Function. This generic overload lets a handler infer
+       * both its params (`P`) and its resolved return type (`R`).
        */
       function define<P extends Params = Params, R = unknown>(
         name: string,
         handler: (request: FunctionRequest<P>) => Promise<R> | R,
-        validator?: Validator | ((request: FunctionRequest<P>) => unknown),
+        validator?: ValidatorOrHandler<FunctionRequest<P>>,
+      ): void;
+
+      /** Registers a background job. */
+      function job(
+        name: string,
+        handler: (request: JobRequest) => TriggerResult,
+      ): void;
+
+      /**
+       * Runs before an object is saved. Pass a class name or constructor; pass
+       * `Parse.File` to register a file-save trigger.
+       */
+      function beforeSave(
+        fileClass: typeof File,
+        handler: (request: FileTriggerRequest) => TriggerResult<void | File>,
+        validator?: ValidatorOrHandler<FileTriggerRequest>,
+      ): void;
+      function beforeSave<T extends Object = Object>(
+        parseClass: TriggerClass<T>,
+        handler: (request: BeforeSaveRequest<T>) => TriggerResult<void | T>,
+        validator?: ValidatorOrHandler<BeforeSaveRequest<T>>,
+      ): void;
+
+      /**
+       * Runs after an object is saved. Pass `Parse.File` to register a
+       * file-save trigger.
+       */
+      function afterSave(
+        fileClass: typeof File,
+        handler: (request: FileTriggerRequest) => TriggerResult,
+        validator?: ValidatorOrHandler<FileTriggerRequest>,
+      ): void;
+      function afterSave<T extends Object = Object>(
+        parseClass: TriggerClass<T>,
+        handler: (request: AfterSaveRequest<T>) => TriggerResult,
+        validator?: ValidatorOrHandler<AfterSaveRequest<T>>,
+      ): void;
+
+      /**
+       * Runs before an object is deleted. Pass `Parse.File` to register a
+       * file-delete trigger.
+       */
+      function beforeDelete(
+        fileClass: typeof File,
+        handler: (request: FileTriggerRequest) => TriggerResult,
+        validator?: ValidatorOrHandler<FileTriggerRequest>,
+      ): void;
+      function beforeDelete<T extends Object = Object>(
+        parseClass: TriggerClass<T>,
+        handler: (request: BeforeDeleteRequest<T>) => TriggerResult,
+        validator?: ValidatorOrHandler<BeforeDeleteRequest<T>>,
+      ): void;
+
+      /**
+       * Runs after an object is deleted. Pass `Parse.File` to register a
+       * file-delete trigger.
+       */
+      function afterDelete(
+        fileClass: typeof File,
+        handler: (request: FileTriggerRequest) => TriggerResult,
+        validator?: ValidatorOrHandler<FileTriggerRequest>,
+      ): void;
+      function afterDelete<T extends Object = Object>(
+        parseClass: TriggerClass<T>,
+        handler: (request: AfterDeleteRequest<T>) => TriggerResult,
+        validator?: ValidatorOrHandler<AfterDeleteRequest<T>>,
+      ): void;
+
+      /**
+       * Runs before a query is executed. The handler may mutate
+       * `request.query` or return a replacement `Parse.Query`.
+       */
+      function beforeFind<T extends Object = Object>(
+        parseClass: TriggerClass<T>,
+        handler: (
+          request: BeforeFindRequest<T>,
+        ) => TriggerResult<void | Query<T>>,
+        validator?: ValidatorOrHandler<BeforeFindRequest<T>>,
+      ): void;
+
+      /**
+       * Runs after a query is executed. The handler may return a replacement
+       * array of results.
+       */
+      function afterFind<T extends Object = Object>(
+        parseClass: TriggerClass<T>,
+        handler: (request: AfterFindRequest<T>) => TriggerResult<void | T[]>,
+        validator?: ValidatorOrHandler<AfterFindRequest<T>>,
+      ): void;
+
+      /** Runs before a user logs in. */
+      function beforeLogin(
+        handler: (request: TriggerRequest<User>) => TriggerResult,
+        validator?: ValidatorOrHandler<TriggerRequest<User>>,
+      ): void;
+
+      /** Runs after a user logs in. */
+      function afterLogin(
+        handler: (request: TriggerRequest<User>) => TriggerResult,
+        validator?: ValidatorOrHandler<TriggerRequest<User>>,
+      ): void;
+
+      /** Runs after a user logs out. */
+      function afterLogout(
+        handler: (request: TriggerRequest<Session>) => TriggerResult,
+        validator?: ValidatorOrHandler<TriggerRequest<Session>>,
+      ): void;
+
+      /** Runs before a password-reset email is sent. */
+      function beforePasswordResetRequest(
+        handler: (request: TriggerRequest<User>) => TriggerResult,
+        validator?: ValidatorOrHandler<TriggerRequest<User>>,
       ): void;
 
       /** Runs before a LiveQuery client connects. */
       function beforeConnect(
-        handler: (request: ConnectTriggerRequest) => Promise<void> | void,
-        validator?: Validator | ((request: ConnectTriggerRequest) => unknown),
+        handler: (request: ConnectTriggerRequest) => TriggerResult,
+        validator?: ValidatorOrHandler<ConnectTriggerRequest>,
       ): void;
 
       /** Runs before a LiveQuery subscription is created. */
       function beforeSubscribe<T extends Object = Object>(
-        parseClass: string | (new () => T),
-        handler: (request: BeforeSubscribeRequest<T>) => Promise<void> | void,
-        validator?:
-          | Validator
-          | ((request: BeforeSubscribeRequest<T>) => unknown),
+        parseClass: TriggerClass<T>,
+        handler: (request: BeforeSubscribeRequest<T>) => TriggerResult,
+        validator?: ValidatorOrHandler<BeforeSubscribeRequest<T>>,
       ): void;
 
       /** Runs after a LiveQuery event, before it is sent to clients. */
       function afterLiveQueryEvent<T extends Object = Object>(
-        parseClass: string | (new () => T),
-        handler: (request: LiveQueryEventTrigger<T>) => Promise<void> | void,
-        validator?:
-          | Validator
-          | ((request: LiveQueryEventTrigger<T>) => unknown),
+        parseClass: TriggerClass<T>,
+        handler: (request: LiveQueryEventTrigger<T>) => TriggerResult,
+        validator?: ValidatorOrHandler<LiveQueryEventTrigger<T>>,
       ): void;
 
       /** Registers a listener for LiveQuery server lifecycle events. */
       function onLiveQueryEvent(
         handler: (info: LiveQueryEventHandlerInfo) => void,
-      ): void;
-
-      /** Runs before a password-reset email is sent. */
-      function beforePasswordResetRequest(
-        handler: (request: TriggerRequest<User>) => Promise<void> | void,
-        validator?: Validator | ((request: TriggerRequest<User>) => unknown),
       ): void;
 
       /** Sends an email through the configured email adapter. */
