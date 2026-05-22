@@ -11,14 +11,5 @@ declare global {
   var chrome: any;
   // eslint-disable-next-line no-var
   var browser: any;
-
-  namespace Parse {
-    namespace Cloud {
-      function define<P extends Params = Params, R = any>(
-        name: string,
-        func: (request: FunctionRequest<P>) => Promise<R> | R,
-        validator?: Validator | ((request: FunctionRequest<P>) => any),
-      ): void;
-    }
-  }
 }
+
