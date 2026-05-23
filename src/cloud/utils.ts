@@ -1,7 +1,7 @@
 import {
-  VideoSource,
-  VideoCaptionData,
   CaptionPrivacy,
+  VideoCaptionData,
+  VideoSource,
 } from "@/common/feature/video/types";
 import { videoSourceToProcessorMap } from "@/common/feature/video/utils";
 import { getBaseLanguageCode, languages } from "@/common/languages";
@@ -14,7 +14,7 @@ export const unixSeconds = (date: Date) => {
 
 export const getVideoName = async (
   videoSource: VideoSource,
-  videoId: string
+  videoId: string,
 ): Promise<string> => {
   const processor = videoSourceToProcessorMap[videoSource];
   const oembedLink = processor.generateVideoLink(videoId);
@@ -52,9 +52,9 @@ export const getVideoCaptionCount = (captionData: VideoCaptionData): number => {
 
 export const hasRole = async (
   user: Parse.User,
-  role: string
+  role: string,
 ): Promise<boolean> => {
-  const adminRoleQuery = new Parse.Query(Parse.Role);
+  const adminRoleQuery = new Parse.Query<Parse.Role>(Parse.Role);
   adminRoleQuery.equalTo("name", role);
   adminRoleQuery.equalTo("users", user);
   return !!(await adminRoleQuery.first());
@@ -74,7 +74,7 @@ export const hasAdminRole = async (user: Parse.User): Promise<boolean> => {
 };
 
 export const hasReviewerManagerRole = async (
-  user: Parse.User
+  user: Parse.User,
 ): Promise<boolean> => {
   return await hasRole(user, role.reviewerManager);
 };
@@ -90,7 +90,7 @@ export const hasReviewerRole = async (user: Parse.User): Promise<boolean> => {
 
 export const canViewCaption = (
   caption: CaptionSchema,
-  userId: string
+  userId: string | undefined,
 ): boolean => {
   const privacy: CaptionPrivacy = caption.get("privacy") || 0;
   if (privacy === CaptionPrivacy.Public) {
@@ -111,3 +111,7 @@ export const escapeRegexInString = (inString: string) => {
 export const isUndefinedOrNull = (value: any): boolean => {
   return value === undefined || value === null;
 };
+
+export function isTruthy<T>(x: T | undefined): x is T {
+  return !!x;
+}

@@ -2,6 +2,7 @@ import { captionTags } from "@/common/constants";
 import { GetAutoCaptionListParams } from "@/common/feature/caption-editor/types";
 import { VideoSource } from "@/common/feature/video/types";
 import {
+  CaptionSchema,
   CaptionerPrivateSchema,
   CaptionerSchema,
   VideoSchema,
@@ -35,7 +36,9 @@ Parse.Cloud.define(
     if (!videoResult) {
       const videoName =
         nameMap[videoId] || (await getVideoName(videoSource, videoId));
-      const Video = Parse.Object.extend(PARSE_CLASS.videos);
+      const Video = Parse.Object.extend(
+        PARSE_CLASS.videos,
+      ) as new () => VideoSchema;
       const newVideo = new Video();
       newVideo.set("language", "unk");
       newVideo.set("sourceId", videoId);
@@ -84,8 +87,10 @@ Parse.Cloud.define(
       const videoResult = await videoQuery.first();
       if (!videoResult) {
         const videoName = nameMap[videoId] || "";
-        const Video = Parse.Object.extend(PARSE_CLASS.videos);
-        const newVideo: Parse.Object = new Video();
+        const Video = Parse.Object.extend(
+          PARSE_CLASS.videos,
+        ) as new () => VideoSchema;
+        const newVideo = new Video();
         newVideo.set("language", "unk");
         newVideo.set("sourceId", videoId);
         newVideo.set("source", sourceString);
@@ -145,7 +150,7 @@ Parse.Cloud.define(
     let captionerId = "";
     if (userId) {
       // Verify that the user exists
-      const userQuery = new Parse.Query(Parse.User);
+      const userQuery = new Parse.Query<Parse.User>(Parse.User);
       userQuery.equalTo("objectId", userId);
       const user = await userQuery.first({ useMasterKey: true });
       if (!user) {
@@ -165,7 +170,9 @@ Parse.Cloud.define(
       captionerId = captionerPrivate.get("captionerId");
     }
 
-    const Caption = Parse.Object.extend(PARSE_CLASS.captions);
+    const Caption = Parse.Object.extend(
+      PARSE_CLASS.captions,
+    ) as new () => CaptionSchema;
     const videoSource = VideoSource.Youtube.toString();
     const newCaption = new Caption();
     newCaption.set("creatorId", captionerId);

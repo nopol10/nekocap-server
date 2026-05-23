@@ -17,7 +17,7 @@ export const getUserProfile = async (
     return undefined;
   }
 
-  const userQuery = new Parse.Query(Parse.User);
+  const userQuery = new Parse.Query<Parse.User>(Parse.User);
   userQuery.equalTo("objectId", userId);
   const user = await userQuery.first({ useMasterKey: true });
 

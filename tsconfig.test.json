@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "rootDirs": ["./src", "./test", "../nekocap/src"],
+    "types": ["node"]
+  },
+  "include": ["src/**/*", "test/**/*"]
+}

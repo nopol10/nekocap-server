@@ -1,16 +1,21 @@
 {
   "compilerOptions": {
+    "skipLibCheck": true,
+    "useUnknownInCatchVariables": false,
     "allowSyntheticDefaultImports": true,
-    "module": "commonjs",
+    "module": "preserve",
     "esModuleInterop": true,
     "target": "es2016",
     "noImplicitAny": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "sourceMap": false,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
     "outDir": "dist/js",
-    "baseUrl": ".",
+    "rootDir": "..",
+    "rootDirs": ["./src", "../nekocap/src"],
     "paths": {
-      "*": ["node_modules/*", "src/*"],
+      "*": ["./node_modules/@types/*", "./node_modules/*", "./src/*"],
       "@/*": ["../nekocap/src/*"]
     }
   },
