@@ -398,7 +398,9 @@ Parse.Cloud.define(
         videoName =
           (await getVideoName(caption.videoSource, videoId)) ||
           videoName.substring(0, 100);
-        const Video = Parse.Object.extend(PARSE_CLASS.videos);
+        const Video = Parse.Object.extend(
+          PARSE_CLASS.videos,
+        ) as new () => VideoSchema;
         const newVideo = new Video();
         // TODO set language from video
         newVideo.set("language", videoLanguageCode);
@@ -413,7 +415,9 @@ Parse.Cloud.define(
         tags.push(captionTags.audioDescribed);
       }
 
-      const Caption = Parse.Object.extend(PARSE_CLASS.captions);
+      const Caption = Parse.Object.extend(
+        PARSE_CLASS.captions,
+      ) as new () => CaptionSchema;
       const newCaption = new Caption();
       newCaption.set("creatorId", user.id);
       newCaption.set("language", captionLanguageCode);
@@ -634,7 +638,7 @@ const getUserPrivateProfile = async (
     return undefined;
   }
 
-  const userQuery = new Parse.Query(Parse.User);
+  const userQuery = new Parse.Query<Parse.User>(Parse.User);
   userQuery.equalTo("objectId", targetUserId);
   const user = await userQuery.first({ useMasterKey: true });
 
@@ -893,7 +897,9 @@ Parse.Cloud.define(
 const createCaptionLikesObject = async (
   user: Parse.User,
 ): Promise<CaptionLikesSchema> => {
-  const CaptionLikes = Parse.Object.extend(PARSE_CLASS.captionLikes);
+  const CaptionLikes = Parse.Object.extend(
+    PARSE_CLASS.captionLikes,
+  ) as new () => CaptionLikesSchema;
   const captionLikes = new CaptionLikes();
   captionLikes.set("userId", user.id);
   captionLikes.set("likes", []);
@@ -1339,14 +1345,14 @@ Parse.Cloud.define(
       return { status: "error", error: "Not authorized!" };
     }
     const { targetUserId } = request.params;
-    const reviewerQuery = new Parse.Query(Parse.Role);
+    const reviewerQuery = new Parse.Query<Parse.Role>(Parse.Role);
     reviewerQuery.equalTo("name", role.reviewer);
     const reviewerRole = await reviewerQuery.first({ useMasterKey: true });
     if (!reviewerRole) {
       return { status: "error", error: "Reviewer role not found!" };
     }
 
-    const userQuery = new Parse.Query(Parse.User);
+    const userQuery = new Parse.Query<Parse.User>(Parse.User);
     userQuery.equalTo("objectId", targetUserId);
     const user = await userQuery.first({ useMasterKey: true });
     if (!user) {
@@ -1387,7 +1393,7 @@ Parse.Cloud.define(
       return { status: "error", error: "Not authorized!" };
     }
     const { targetUserId } = request.params;
-    const reviewerQuery = new Parse.Query(Parse.Role);
+    const reviewerQuery = new Parse.Query<Parse.Role>(Parse.Role);
     reviewerQuery.equalTo("name", role.reviewerManager);
     const reviewerManagerRole = await reviewerQuery.first({
       useMasterKey: true,
@@ -1396,7 +1402,7 @@ Parse.Cloud.define(
       return { status: "error", error: "Reviewer Manager role not found!" };
     }
 
-    const userQuery = new Parse.Query(Parse.User);
+    const userQuery = new Parse.Query<Parse.User>(Parse.User);
     userQuery.equalTo("objectId", targetUserId);
     const user = await userQuery.first({ useMasterKey: true });
     if (!user) {
@@ -1556,7 +1562,7 @@ Parse.Cloud.define(
     let count: number = 0;
     if (captions.length <= 0 && offset > 0) {
       // Requested offset could be past the last page, try returning the last page
-      count = await new Parse.Query(PARSE_CLASS.captions)
+      count = await new Parse.Query<CaptionSchema>(PARSE_CLASS.captions)
         .containedIn("privacy", [undefined, CaptionPrivacy.Public])
         .notEqualTo("rejected", true)
         .count({ useMasterKey: true });

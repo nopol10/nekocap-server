@@ -12,6 +12,22 @@ const MAX_SEARCH_TAG_LIMIT = 5;
 
 export type AdvancedFilter = "all" | "advanced" | "nonAdvanced";
 
+type MongoOperator<T> = {
+  $in?: T[];
+  $nin?: T[];
+  $ne?: T;
+  $eq?: T;
+  $exists?: boolean;
+  $regex?: string;
+  $gt?: T;
+  $gte?: T;
+  $lt?: T;
+  $lte?: T;
+};
+
+/** Equality match against `T`, or a Mongo operator expression over `T`. */
+type MongoFilter<T> = T | MongoOperator<T>;
+
 type GetCaptionBaseParam = {
   limit: number;
   offset: number;
@@ -43,10 +59,10 @@ const getCaptionResult = async ({
 
   const filters: {
     creatorId?: string;
-    privacy?: any;
-    rejected?: any;
-    language?: any;
-    tags?: any;
+    privacy?: MongoFilter<CaptionPrivacy | undefined>;
+    rejected?: MongoFilter<boolean>;
+    language?: MongoFilter<string>;
+    tags?: MongoFilter<string>;
   } = {};
   if (!!captionerId) {
     filters.creatorId = captionerId;

@@ -54,7 +54,7 @@ export const hasRole = async (
   user: Parse.User,
   role: string,
 ): Promise<boolean> => {
-  const adminRoleQuery = new Parse.Query(Parse.Role);
+  const adminRoleQuery = new Parse.Query<Parse.Role>(Parse.Role);
   adminRoleQuery.equalTo("name", role);
   adminRoleQuery.equalTo("users", user);
   return !!(await adminRoleQuery.first());
