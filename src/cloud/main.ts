@@ -221,7 +221,7 @@ const loadCaption = async (
   }
 
   const { id: userId } = user;
-  const sessionToken = user.getSessionToken();
+  const sessionToken = user.getSessionToken() ?? undefined;
   const likesQuery = new Parse.Query<CaptionLikesSchema>(
     PARSE_CLASS.captionLikes,
   );
@@ -905,7 +905,9 @@ const createCaptionLikesObject = async (
   captionLikes.set("likes", []);
   captionLikes.set("dislikes", []);
   captionLikes.setACL(getAdminACL());
-  await captionLikes.save(null, { sessionToken: user.getSessionToken() });
+  await captionLikes.save(null, {
+    sessionToken: user.getSessionToken() ?? undefined,
+  });
   return captionLikes;
 };
 

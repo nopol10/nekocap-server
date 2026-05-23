@@ -1,227 +1,214 @@
 /**
  * Parse Cloud Code type definitions.
  *
- * `@types/parse` ships a `Parse.Cloud` namespace, but those typings describe
- * the client SDK: they omit several trigger-registration functions, type some
- * handlers too narrowly, and only approximate the request objects parse-server
- * passes to Cloud Code handlers.
+ * The `parse` npm package ships its server-side Cloud Code types in
+ * `parse/types/CloudCode.d.ts`, but the public `parse` entry only re-exports
+ * the client-side `Parse.Cloud` surface (`run`, `getJobsData`, ...). The
+ * server-side types (`FunctionRequest`, `beforeSave`, etc.) are exposed only
+ * through `parse/node`, which the cloud code does not import — cloud handlers
+ * reach `Parse.Cloud.*` via the global that parse-server installs at runtime.
  *
- * This file augments `Parse.Cloud` to match the server-side API as implemented
- * in parse-community/parse-server (`src/cloud-code/Parse.Cloud.js` and
- * `src/triggers.js`), targeting parse-server 9.x — the version this project
- * runs (see `package.json`).
- *
- * The declarations merge with `@types/parse`:
- * - Interface augmentations only ADD members, declared optional so the merge
- *   never conflicts and partial request objects (tests, mocks) keep compiling.
- * - Function declarations add overloads. parse-server is more permissive than
- *   the SDK typings (e.g. `beforeSave` accepts `Parse.File`, a handler may
- *   return the modified object/query), so the extra overloads accept calls the
- *   SDK typings would reject without breaking calls they already allow.
+ * This file fills that gap by declaring the server-side Cloud Code API on the
+ * global `Parse.Cloud` namespace, mirroring `parse/types/CloudCode.d.ts`
+ * (and `parse-community/parse-server` `src/cloud-code/Parse.Cloud.js` and
+ * `src/triggers.js`) for parse-server 9.x. References to `Parse.Object`,
+ * `Parse.User`, `Parse.File`, `Parse.Query` resolve through parse's UMD
+ * `export as namespace Parse`.
  */
 /// <reference types="parse" />
+/// <reference types="node" />
 export {};
 
 declare global {
   namespace Parse {
     namespace Cloud {
-      // === Shared helper types ===========================================
+      // === Helper types ==================================================
 
-      /** Logger handed to handlers as `request.log`. */
-      interface CloudCodeLogger {
-        info(...args: unknown[]): void;
-        warn(...args: unknown[]): void;
-        error(...args: unknown[]): void;
-        debug(...args: unknown[]): void;
-        verbose(...args: unknown[]): void;
-      }
-
-      /** Raw HTTP request headers forwarded to handlers as `request.headers`. */
-      type CloudCodeHeaders = Record<string, string | string[] | undefined>;
-
-      /**
-       * parse-server `Config` exposed as `request.config`. Typed loosely
-       * because it is an internal server structure with no stable contract.
-       */
-      type CloudCodeConfig = Record<string, unknown>;
-
-      /** Mutable object shared between the triggers of a single request. */
-      type CloudCodeContext = Record<string, unknown>;
-
-      /** Return contract of a trigger/job handler: `R`, or a promise of `R`. */
+      /** Resolves to `R` or a promise of `R`; the return contract for handlers. */
       type TriggerResult<R = void> = R | Promise<R>;
 
-      /**
-       * A Parse class accepted by a trigger registration: either the class
-       * name or the class constructor (e.g. `"captions"`, `Parse.User`).
-       */
+      /** A Parse class accepted by a trigger registration. */
       type TriggerClass<T> = string | (new (...args: any[]) => T);
 
       /** Validator argument accepted as the last parameter of every trigger. */
       type ValidatorOrHandler<Req> =
-        | Validator
+        | ValidatorObject
         | ((request: Req) => unknown);
 
       // === Validator =====================================================
-      // `@types/parse` already declares requireUser/requireMaster/fields/etc.
 
-      /**
-       * Rate-limit options accepted on a {@link Validator} `rateLimit` field.
-       * Mirrors parse-server's `RateLimitOptions`.
-       */
+      interface ValidatorField {
+        type?: any;
+        constant?: boolean;
+        default?: any;
+        options?: any[] | (() => any[]) | any;
+        required?: boolean;
+        error?: string;
+      }
+
       interface ValidatorRateLimitOptions {
+        requestPath?: string;
+        requestMethods?: string | string[];
         requestTimeWindow?: number;
         requestCount?: number;
         errorResponseMessage?: string;
         includeInternalRequests?: boolean;
         includeMasterKey?: boolean;
-        redisUrl?: string;
       }
 
-      interface Validator {
-        /** Per-function rate limiting applied before the handler runs. */
+      interface ValidatorObject {
+        requireUser?: boolean;
+        requireMaster?: boolean;
+        validateMasterKey?: boolean;
+        skipWithMasterKey?: boolean;
+        requireAnyUserRoles?: string[] | (() => string[]);
+        requireAllUserRoles?: string[] | (() => string[]);
+        requireUserKeys?: string[] | Record<string, ValidatorField>;
+        fields?: string[] | Record<string, ValidatorField>;
         rateLimit?: ValidatorRateLimitOptions;
       }
 
-      // === Request object augmentations ==================================
+      /** Legacy alias for {@link ValidatorObject}; kept for `@types/parse` compatibility. */
+      type Validator = ValidatorObject;
 
-      /**
-       * Legacy callback-style response object. Modern Cloud Code is
-       * promise-based and resolves a value instead of calling these, but
-       * parse-server still documents the shape.
-       */
+      // === Request objects ==============================================
+
+      interface FunctionRequest<T = Record<string, any>> {
+        /** Set when the request was made from an installed app. */
+        installationId?: string;
+        /** True when the request was made with the master key. */
+        master: boolean;
+        /** True when the request authenticated with the read-only master key. */
+        isReadOnly?: boolean;
+        /** The user that made the request, if any. */
+        user?: User;
+        /** Params passed to the cloud function. */
+        params: T;
+        /** Client IP address. */
+        ip: string;
+        /** Raw HTTP request headers. */
+        headers: Record<string, string>;
+        /** Cloud Code logger. */
+        log: any;
+        /** Name of the cloud function being executed. */
+        functionName: string;
+        /** Mutable object shared between triggers run for this request. */
+        context: Record<string, unknown>;
+        /** parse-server Config for the request. */
+        config: any;
+      }
+
+      /** Legacy callback-style response (parse-server still documents the shape). */
       interface FunctionResponse {
         success(result?: unknown): void;
         error(error?: string | Error): void;
         status(code: number): FunctionResponse;
-        header(name: string, value?: string): FunctionResponse;
+        header(name: string, value: string): FunctionResponse;
       }
 
-      // Cloud Function request.
-      // `@types/parse` already declares installationId/master/params/user.
-      interface FunctionRequest<T extends Params = Params> {
-        /** True when the request authenticated with the read-only master key. */
-        isReadOnly?: boolean;
-        /** IP address of the client that issued the request. */
-        ip?: string;
-        /** Raw HTTP headers of the request. */
-        headers?: CloudCodeHeaders;
-        /** Cloud Code logger. */
-        log?: CloudCodeLogger;
-        /** Name of the Cloud Function being executed. */
-        functionName?: string;
-        /** Object shared across the triggers run for this request. */
-        context?: CloudCodeContext;
-        /** parse-server Config for the request. */
-        config?: CloudCodeConfig;
-      }
-
-      // Job request.
-      // `@types/parse` already declares params/message.
-      interface JobRequest<T extends Params = Params> {
-        /** Name of the job being executed. */
-        jobName?: string;
-        ip?: string;
-        headers?: CloudCodeHeaders;
-        log?: CloudCodeLogger;
-        config?: CloudCodeConfig;
-      }
-
-      // Generic trigger request.
-      // `@types/parse` already declares installationId/master/user/ip/headers/
-      // triggerName/log/object/original.
-      interface TriggerRequest<T = Object> {
-        /** True when the request authenticated with the read-only master key. */
+      interface TriggerRequest<T extends Object = Object> {
+        installationId?: string;
+        master: boolean;
         isReadOnly?: boolean;
         /** True for auth-adapter challenge requests (beforeLogin). */
         isChallenge?: boolean;
-        /** Object shared across the triggers run for this request. */
-        context?: CloudCodeContext;
-        /** parse-server Config for the request. */
-        config?: CloudCodeConfig;
+        user?: User;
+        /** The object triggering the hook. */
+        object: T;
+        /** The object as currently stored, before changes. */
+        original?: T;
+        ip: string;
+        headers: Record<string, string>;
+        triggerName: string;
+        log: any;
+        context: Record<string, unknown>;
+        config: any;
       }
 
-      // Save/delete trigger requests.
-      // `@types/parse` declares `context` on Before/AfterSaveRequest only;
-      // parse-server also forwards `config`, and `context` on delete triggers
-      // (the latter inherited from the TriggerRequest augmentation above).
-      interface BeforeSaveRequest<T = Object> {
-        config?: CloudCodeConfig;
-      }
-      interface AfterSaveRequest<T = Object> {
-        config?: CloudCodeConfig;
-      }
-      interface BeforeDeleteRequest<T = Object> {
-        config?: CloudCodeConfig;
-      }
-      interface AfterDeleteRequest<T = Object> {
-        config?: CloudCodeConfig;
-      }
+      type BeforeSaveRequest<T extends Object = Object> = TriggerRequest<T>;
+      type AfterSaveRequest<T extends Object = Object> = TriggerRequest<T>;
+      type BeforeDeleteRequest<T extends Object = Object> = TriggerRequest<T>;
+      type AfterDeleteRequest<T extends Object = Object> = TriggerRequest<T>;
 
-      // Find trigger requests.
-      // `@types/parse` declares query/count/isGet/readPreference on
-      // BeforeFindRequest and `objects` on AfterFindRequest.
       interface BeforeFindRequest<T extends Object = Object> {
-        config?: CloudCodeConfig;
-      }
-      interface AfterFindRequest<T = Object> {
-        config?: CloudCodeConfig;
-        /**
-         * Results of the query. parse-server names this `results`; the SDK
-         * typings call it `objects`. Both refer to the same array.
-         */
-        results?: T[];
+        installationId?: string;
+        master: boolean;
+        isReadOnly?: boolean;
+        user?: User;
+        /** The query being executed. The handler may mutate it or return a replacement. */
+        query: Query<T>;
+        ip: string;
+        headers: Record<string, string>;
+        triggerName: string;
+        log: any;
+        config: any;
+        context: Record<string, unknown>;
+        isGet: boolean;
+        readPreference?: string;
+        count?: boolean;
       }
 
-      // File trigger request.
-      // `@types/parse` declares file/fileSize/contentLength.
+      interface AfterFindRequest<T extends Object = Object> {
+        installationId?: string;
+        master: boolean;
+        isReadOnly?: boolean;
+        user?: User;
+        query: Query<T>;
+        /** Results returned by the query. The handler may return a replacement array. */
+        results: T[];
+        /** Alias for `results` — parse-server historically exposed both names. */
+        objects?: T[];
+        ip: string;
+        headers: Record<string, string>;
+        triggerName: string;
+        log: any;
+        config: any;
+        context: Record<string, unknown>;
+      }
+
       interface FileTriggerRequest {
-        config?: CloudCodeConfig;
+        installationId?: string;
+        master: boolean;
+        isReadOnly?: boolean;
+        user?: User;
+        file: File;
+        fileSize: number;
+        contentLength: number;
+        ip: string;
+        headers: Record<string, string>;
+        triggerName: string;
+        log: any;
+        config: any;
         /** afterFind file trigger: force the file to download. */
         forceDownload?: boolean;
         /** afterFind file trigger: extra headers for the file response. */
         responseHeaders?: Record<string, string>;
       }
 
-      /**
-       * Request passed to `beforeConnect` handlers and the basis for
-       * LiveQuery connection triggers. Mirrors parse-server's
-       * `ConnectTriggerRequest`.
-       */
       interface ConnectTriggerRequest {
-        event?: string;
         installationId?: string;
-        useMasterKey?: boolean;
+        useMasterKey: boolean;
+        user?: User;
+        clients: number;
+        subscriptions: number;
+        sessionToken?: string;
+      }
+
+      interface LiveQueryEventTrigger<T extends Object = Object> {
+        installationId?: string;
+        useMasterKey: boolean;
         user?: User;
         sessionToken?: string;
-        clients?: number;
-        subscriptions?: number;
-        log?: CloudCodeLogger;
-      }
-
-      /** Request passed to `beforeSubscribe` handlers. */
-      interface BeforeSubscribeRequest<T extends Object = Object>
-        extends TriggerRequest<T> {
-        /** The subscription query; the handler may constrain it. */
-        query: Query<T>;
-        sessionToken?: string;
-      }
-
-      /** Request passed to `afterLiveQueryEvent` handlers. */
-      interface LiveQueryEventTrigger<T extends Object = Object>
-        extends TriggerRequest<T> {
-        /** The LiveQuery event that fired. */
-        event: 'create' | 'enter' | 'update' | 'leave' | 'delete';
-        /** Number of connected LiveQuery clients. */
+        event: 'create' | 'enter' | 'update' | 'leave' | 'delete' | string;
+        object: T;
+        original?: T;
         clients: number;
-        /** Number of active subscriptions. */
         subscriptions: number;
-        /** Set to false inside the handler to suppress sending the event. */
+        /** Set to `false` in the handler to suppress sending the event. */
         sendEvent: boolean;
-        sessionToken?: string;
       }
 
-      /** Info object passed to `onLiveQueryEvent` handlers. */
+      /** Info object passed to `onLiveQueryEvent` lifecycle handlers. */
       interface LiveQueryEventHandlerInfo {
         event:
           | 'ws_connect'
@@ -240,29 +227,67 @@ declare global {
         object?: Object;
       }
 
+      interface JobRequest<T = Record<string, any>> {
+        params: T;
+        message: (message: string) => void;
+        jobName?: string;
+        ip?: string;
+        headers?: Record<string, string>;
+        log?: any;
+        config: any;
+      }
+
+      // === HTTPRequest (legacy but still exposed by parse-server) =========
+
+      interface HTTPOptions {
+        body?: string | object;
+        error?: (response: HTTPResponse) => void;
+        followRedirects?: boolean;
+        headers?: Record<string, string>;
+        method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'HEAD' | 'OPTIONS';
+        params?: string | Record<string, string>;
+        success?: (response: HTTPResponse) => void;
+        url: string;
+      }
+
+      interface HTTPResponse {
+        buffer?: Buffer;
+        cookies?: Record<string, any>;
+        data?: any;
+        headers?: Record<string, string>;
+        status: number;
+        text?: string;
+      }
+
+      enum ReadPreferenceOption {
+        Primary = 'PRIMARY',
+        PrimaryPreferred = 'PRIMARY_PREFERRED',
+        Secondary = 'SECONDARY',
+        SecondaryPreferred = 'SECONDARY_PREFERRED',
+        Nearest = 'NEAREST',
+      }
+
       // === Trigger & function registration ===============================
-      // Overloads added alongside the `@types/parse` declarations. parse-server
-      // accepts these forms; the SDK typings do not cover all of them.
 
       /**
-       * Registers a Cloud Function. This generic overload lets a handler infer
-       * both its params (`P`) and its resolved return type (`R`).
+       * Registers a Cloud Function. The handler can infer both its params
+       * (`T`) and its resolved return type.
        */
-      function define<P extends Params = Params, R = unknown>(
+      function define<T = Record<string, any>>(
         name: string,
-        handler: (request: FunctionRequest<P>) => Promise<R> | R,
-        validator?: ValidatorOrHandler<FunctionRequest<P>>,
+        handler: (request: FunctionRequest<T>) => any,
+        validator?: ValidatorOrHandler<FunctionRequest<T>>,
       ): void;
 
       /** Registers a background job. */
       function job(
         name: string,
-        handler: (request: JobRequest) => TriggerResult,
+        handler: (request: JobRequest) => any,
       ): void;
 
       /**
-       * Runs before an object is saved. Pass a class name or constructor; pass
-       * `Parse.File` to register a file-save trigger.
+       * Runs before an object is saved. Pass `Parse.File` to register a
+       * file-save trigger.
        */
       function beforeSave(
         fileClass: typeof File,
@@ -275,10 +300,7 @@ declare global {
         validator?: ValidatorOrHandler<BeforeSaveRequest<T>>,
       ): void;
 
-      /**
-       * Runs after an object is saved. Pass `Parse.File` to register a
-       * file-save trigger.
-       */
+      /** Runs after an object is saved. Pass `Parse.File` for file triggers. */
       function afterSave(
         fileClass: typeof File,
         handler: (request: FileTriggerRequest) => TriggerResult,
@@ -290,10 +312,7 @@ declare global {
         validator?: ValidatorOrHandler<AfterSaveRequest<T>>,
       ): void;
 
-      /**
-       * Runs before an object is deleted. Pass `Parse.File` to register a
-       * file-delete trigger.
-       */
+      /** Runs before an object is deleted. Pass `Parse.File` for file triggers. */
       function beforeDelete(
         fileClass: typeof File,
         handler: (request: FileTriggerRequest) => TriggerResult,
@@ -305,10 +324,7 @@ declare global {
         validator?: ValidatorOrHandler<BeforeDeleteRequest<T>>,
       ): void;
 
-      /**
-       * Runs after an object is deleted. Pass `Parse.File` to register a
-       * file-delete trigger.
-       */
+      /** Runs after an object is deleted. Pass `Parse.File` for file triggers. */
       function afterDelete(
         fileClass: typeof File,
         handler: (request: FileTriggerRequest) => TriggerResult,
@@ -321,8 +337,8 @@ declare global {
       ): void;
 
       /**
-       * Runs before a query is executed. The handler may mutate
-       * `request.query` or return a replacement `Parse.Query`.
+       * Runs before a query is executed. The handler may mutate `request.query`
+       * or return a replacement `Parse.Query`.
        */
       function beforeFind<T extends Object = Object>(
         parseClass: TriggerClass<T>,
@@ -351,19 +367,32 @@ declare global {
       /** Runs after a user logs in. */
       function afterLogin(
         handler: (request: TriggerRequest<User>) => TriggerResult,
-        validator?: ValidatorOrHandler<TriggerRequest<User>>,
       ): void;
 
       /** Runs after a user logs out. */
       function afterLogout(
-        handler: (request: TriggerRequest<Session>) => TriggerResult,
-        validator?: ValidatorOrHandler<TriggerRequest<Session>>,
+        handler: (request: TriggerRequest) => TriggerResult,
       ): void;
 
       /** Runs before a password-reset email is sent. */
       function beforePasswordResetRequest(
         handler: (request: TriggerRequest<User>) => TriggerResult,
         validator?: ValidatorOrHandler<TriggerRequest<User>>,
+      ): void;
+
+      // Dedicated file-trigger registrations (legacy API; the Parse.File
+      // overloads of beforeSave/afterSave/etc. above are the modern unified API).
+      function beforeSaveFile(
+        handler: (request: FileTriggerRequest) => TriggerResult<void | File>,
+      ): void;
+      function afterSaveFile(
+        handler: (request: FileTriggerRequest) => TriggerResult,
+      ): void;
+      function beforeDeleteFile(
+        handler: (request: FileTriggerRequest) => TriggerResult,
+      ): void;
+      function afterDeleteFile(
+        handler: (request: FileTriggerRequest) => TriggerResult,
       ): void;
 
       /** Runs before a LiveQuery client connects. */
@@ -375,8 +404,8 @@ declare global {
       /** Runs before a LiveQuery subscription is created. */
       function beforeSubscribe<T extends Object = Object>(
         parseClass: TriggerClass<T>,
-        handler: (request: BeforeSubscribeRequest<T>) => TriggerResult,
-        validator?: ValidatorOrHandler<BeforeSubscribeRequest<T>>,
+        handler: (request: TriggerRequest<T>) => TriggerResult,
+        validator?: ValidatorOrHandler<TriggerRequest<T>>,
       ): void;
 
       /** Runs after a LiveQuery event, before it is sent to clients. */
@@ -392,7 +421,19 @@ declare global {
       ): void;
 
       /** Sends an email through the configured email adapter. */
-      function sendEmail(data: Record<string, unknown>): Promise<unknown>;
+      function sendEmail(data: {
+        from?: string;
+        to: string;
+        subject?: string;
+        text?: string;
+        html?: string;
+      }): Promise<void>;
+
+      /** Issues an HTTP request from Cloud Code. */
+      function httpRequest(options: HTTPOptions): Promise<HTTPResponse>;
+
+      /** Cloud Code only. Marks subsequent calls in this request as master-key. */
+      function useMasterKey(): void;
     }
   }
 }
