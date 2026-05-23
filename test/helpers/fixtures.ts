@@ -1,9 +1,10 @@
 import Parse from "parse/node";
+
 import { PARSE_CLASS } from "../../src/cloud/constants";
 import { role } from "../../src/cloud/roles";
 
 export interface TestUser {
-  user: Parse.User;
+  user: Parse.User<Parse.Attributes>;
   sessionToken: string;
 }
 
@@ -20,15 +21,27 @@ export async function createTestUser({
   user.set("username", username);
   user.set("password", password);
   if (email) user.set("email", email);
-  await user.signUp();
-  const sessionToken = user.getSessionToken();
+  // The Parse `_User` beforeSave hook rejects signups without `authData` so
+  // that browser users go through the Firebase auth adapter. Tests bypass
+  // that path by saving with the master key (the hook also short-circuits on
+  // `request.master`) and logging in afterwards to mint a session token.
+  await user.save(null, { useMasterKey: true });
+  // `parse` ships its own typings that clash with `@types/parse`: the package's
+  // `ParseUser` class (what `logIn` returns) is structurally close to but not
+  // assignable to the `@types/parse` `User<Attributes>` interface. Reuse the
+  // already-typed `user` (a `Parse.User<Parse.Attributes>`) and just attach the
+  // session token from the login call.
+  const loggedIn = await Parse.User.logIn(username, password);
+  const sessionToken = loggedIn.getSessionToken();
   if (!sessionToken) {
-    throw new Error("Expected session token after signUp");
+    throw new Error("Expected session token after logIn");
   }
   return { user, sessionToken };
 }
 
-export async function makeUserAdmin(user: Parse.User): Promise<void> {
+export async function makeUserAdmin(
+  user: Parse.User<Parse.Attributes>,
+): Promise<void> {
   const acl = new Parse.ACL();
   acl.setPublicReadAccess(true);
 
@@ -54,7 +67,7 @@ export async function createCaptioner({
   name = "Test Captioner",
   verified = false,
   banned = false,
-}: CreateCaptionerInput): Promise<Parse.Object> {
+}: CreateCaptionerInput): Promise<Parse.Object<Parse.Attributes>> {
   const Captioner = Parse.Object.extend(PARSE_CLASS.captioner);
   const captioner = new Captioner();
   captioner.set("userId", userId);

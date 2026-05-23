@@ -1,3 +1,4 @@
+import Parse from "parse/node";
 import {
   afterAll,
   beforeAll,
@@ -7,20 +8,19 @@ import {
   it,
   type TestContext,
 } from "vitest";
-import Parse from "parse/node";
-import {
-  MongoUnavailableError,
-  startParseServer,
-  stopParseServer,
-} from "../helpers/parse-test-server";
-import { invokeCloudFunction } from "../helpers/invoke-cloud-function";
+import { ERROR_MESSAGES } from "../../src/cloud/constants";
 import {
   createCaptioner,
   createTestUser,
   makeUserAdmin,
   resetCollections,
 } from "../helpers/fixtures";
-import { ERROR_MESSAGES } from "../../src/cloud/constants";
+import { invokeCloudFunction } from "../helpers/invoke-cloud-function";
+import {
+  MongoUnavailableError,
+  startParseServer,
+  stopParseServer,
+} from "../helpers/parse-test-server";
 
 interface ServerResponse {
   status: "success" | "error";
@@ -54,7 +54,7 @@ describe("verifyCaptioner cloud function", () => {
   beforeEach(async () => {
     if (skipReason) return;
     await resetCollections();
-    await Parse.Config.save({ maintenance: false });
+    await Parse.Config.save({ maintenance: false }, {});
   });
 
   it("returns NOT_LOGGED_IN when no session token is supplied", async (ctx) => {
@@ -137,7 +137,7 @@ describe("verifyCaptioner cloud function", () => {
     skipIfNoServer(ctx);
     const { user, sessionToken } = await createTestUser({ username: "admin4" });
     await makeUserAdmin(user);
-    await Parse.Config.save({ maintenance: true });
+    await Parse.Config.save({ maintenance: true }, {});
 
     const res = await invokeCloudFunction<ServerResponse>(
       "verifyCaptioner",

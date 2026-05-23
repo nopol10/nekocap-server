@@ -1,7 +1,7 @@
-import path from "node:path";
 import express from "express";
-import type { Server } from "node:http";
+import { Server } from "http";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
+import path from "node:path";
 import { ParseServer } from "parse-server";
 import Parse from "parse/node";
 
@@ -109,10 +109,17 @@ export async function startParseServer(): Promise<TestServer> {
 export async function stopParseServer(): Promise<void> {
   if (!current) return;
   const { httpServer, parseServer, mongo } = current;
-  await new Promise<void>((resolve) =>
-    httpServer.close(() => resolve()),
-  );
-  await parseServer.handleShutdown();
+  await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+  // parse-server's handleShutdown unconditionally calls `this.server.close`,
+  // but `this.server` is never assigned when parse-server is mounted as
+  // express middleware (we own the http listener above). Swallow that case.
+  try {
+    await parseServer.handleShutdown();
+  } catch (err) {
+    if (!(err instanceof TypeError)) {
+      throw err;
+    }
+  }
   await mongo.stop();
   current = undefined;
 }
