@@ -37,7 +37,10 @@ module.exports = {
         include: nestDir,
         use: {
           loader: "ts-loader",
-          options: { configFile: "tsconfig.nest.json", transpileOnly: false },
+          options: {
+            configFile: path.join(__dirname, "src/nest/tsconfig.json"),
+            transpileOnly: false,
+          },
         },
       },
       {

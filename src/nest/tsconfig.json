@@ -13,8 +13,8 @@
     "strict": true,
     "sourceMap": false,
     "noEmit": false,
-    "rootDir": "./src/nest",
-    "outDir": "./dist/nest-build"
+    "rootDir": ".",
+    "outDir": "../../dist/nest-build"
   },
-  "include": ["src/nest/**/*"]
+  "include": ["**/*"]
 }
