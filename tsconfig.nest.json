@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
+    "target": "es2020",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "useUnknownInCatchVariables": false,
+    "strict": false,
+    "noImplicitAny": false,
+    "sourceMap": false,
+    "noEmit": false,
+    "rootDir": "./src/nest",
+    "outDir": "./dist/nest-build"
+  },
+  "include": ["src/nest/**/*"]
+}
