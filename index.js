@@ -71,9 +71,7 @@ async function start() {
   app.use(mountPath, server.app);
 
   try {
-    const nestEntry = process.env.PROD
-      ? require("./nest.js")
-      : require("./dist/nest.js");
+    const nestEntry = require("./nest.js");
     await nestEntry.createNestApp(app);
   } catch (e) {
     console.error("Failed to bootstrap NestJS sub-app:", e);

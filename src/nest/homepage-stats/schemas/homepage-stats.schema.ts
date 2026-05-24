@@ -7,25 +7,25 @@ export type HomepageStatsDocument = HydratedDocument<HomepageStats>;
 @Schema({ collection: HOMEPAGE_STATS_COLLECTION, _id: false })
 export class HomepageStats {
   @Prop({ type: String, required: true })
-  _id: string;
+  _id!: string;
 
   @Prop({ type: Number, required: true, default: 0 })
-  totalViews: number;
+  totalViews!: number;
 
   @Prop({ type: Number, required: true, default: 0 })
-  totalCaptions: number;
+  totalCaptions!: number;
 
   @Prop({ type: Number, required: true, default: 0 })
-  totalCaptioners: number;
+  totalCaptioners!: number;
 
   @Prop({ type: Number, required: true, default: 0 })
-  totalLanguages: number;
+  totalLanguages!: number;
 
   @Prop({ type: Number, required: true, default: 0 })
-  totalSites: number;
+  totalSites!: number;
 
   @Prop({ type: Date, required: true })
-  computedAt: Date;
+  computedAt!: Date;
 }
 
 export const HomepageStatsSchema = SchemaFactory.createForClass(HomepageStats);
