@@ -6,6 +6,7 @@ node_modules
 .env
 dist/*
 cloud/*
+nest/dist/*
 
 firebase-service-account-key.json
 parse-dashboard-config*.json
