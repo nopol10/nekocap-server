@@ -40,12 +40,12 @@
     "node": ">=10.0"
   },
   "devDependencies": {
-    "@babel/cli": "7.23.9",
-    "@babel/core": "7.24.0",
-    "@babel/plugin-transform-runtime": "7.24.0",
-    "@babel/preset-env": "7.24.0",
-    "@babel/preset-react": "7.23.3",
-    "@babel/preset-typescript": "7.23.3",
+    "@babel/cli": "7.28.6",
+    "@babel/core": "7.29.0",
+    "@babel/plugin-transform-runtime": "7.29.0",
+    "@babel/preset-env": "7.29.5",
+    "@babel/preset-react": "7.28.5",
+    "@babel/preset-typescript": "7.28.5",
     "@babel/runtime": "7.29.2",
     "@types/chrome": "^0.0.326",
     "@types/express": "4.17.25",
