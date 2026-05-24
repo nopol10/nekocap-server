@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { Logger, ValidationPipe } from "@nestjs/common";
+import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { ExpressAdapter } from "@nestjs/platform-express";
 import type { Express } from "express";
@@ -17,9 +17,6 @@ export async function createNestApp(expressApp: Express): Promise<void> {
   );
 
   app.setGlobalPrefix(NEST_API_PREFIX);
-  app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, transform: true }),
-  );
   app.enableCors({ origin: true });
 
   await app.init();
