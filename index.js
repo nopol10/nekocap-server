@@ -70,6 +70,13 @@ async function start() {
   // Serve the Parse API on the /parse URL prefix
   app.use(mountPath, server.app);
 
+  try {
+    const nestEntry = require("./nest.js");
+    await nestEntry.createNestApp(app);
+  } catch (e) {
+    console.error("Failed to bootstrap NestJS sub-app:", e);
+  }
+
   Sentry.init({
     dsn: process.env.BACKEND_SENTRY_DSN,
     integrations: [

@@ -13,11 +13,17 @@ const envKeys = Object.keys(env).reduce((prev, next) => {
   return prev;
 }, {});
 
+const nestDir = path.join(__dirname, "src/nest");
+
 /** @type { import('webpack').Configuration } */
 module.exports = {
   target: "node",
   entry: {
     cloud: path.join(__dirname, "src/cloud/main.ts"),
+    nest: {
+      import: path.join(__dirname, "src/nest/main.ts"),
+      library: { type: "commonjs2" },
+    },
   },
   output: {
     path: path.join(__dirname, "dist"),
@@ -27,7 +33,18 @@ module.exports = {
   module: {
     rules: [
       {
-        exclude: /node_modules/,
+        test: /\.tsx?$/,
+        include: nestDir,
+        use: {
+          loader: "ts-loader",
+          options: {
+            configFile: path.join(__dirname, "src/nest/tsconfig.json"),
+            transpileOnly: false,
+          },
+        },
+      },
+      {
+        exclude: [/node_modules/, nestDir],
         test: /\.tsx?$/,
         use: "babel-loader",
       },
@@ -47,6 +64,29 @@ module.exports = {
     new LicenseWebpackPlugin(),
     new webpack.DefinePlugin(envKeys),
     new webpack.IgnorePlugin({ resourceRegExp: /^pg-native$/ }),
+    // NestJS + mongodb optional peer deps we don't use
+    new webpack.IgnorePlugin({
+      checkResource(resource) {
+        const lazyOptional = [
+          "@nestjs/microservices",
+          "@nestjs/microservices/microservices-module",
+          "@nestjs/websockets",
+          "@nestjs/websockets/socket-module",
+          "cache-manager",
+          "class-transformer",
+          "class-transformer/storage",
+          "class-validator",
+          "@mongodb-js/zstd",
+          "@aws-sdk/credential-providers",
+          "gcp-metadata",
+          "snappy",
+          "socks",
+          "mongodb-client-encryption",
+          "kerberos",
+        ];
+        return lazyOptional.includes(resource);
+      },
+    }),
     new CopyPlugin({
       patterns: [
         {
