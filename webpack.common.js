@@ -129,6 +129,11 @@ module.exports = {
       new TerserPlugin({
         parallel: true,
         terserOptions: {
+          // NestJS DI tokens and @nestjs/mongoose model names come from
+          // `Class.name`, so collapsing distinct classes to the same local
+          // identifier would cause models to clobber each other.
+          keep_classnames: true,
+          keep_fnames: true,
           format: {
             comments: false,
           },
