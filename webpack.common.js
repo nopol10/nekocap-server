@@ -4,6 +4,7 @@ const webpack = require("webpack");
 const CopyPlugin = require("copy-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
 const TsconfigPathsPlugin = require("tsconfig-paths-webpack-plugin");
+const nodeExternals = require("webpack-node-externals");
 const LicenseWebpackPlugin = require("license-webpack-plugin")
   .LicenseWebpackPlugin;
 
@@ -113,12 +114,26 @@ module.exports = {
     plugins: [new TsconfigPathsPlugin()],
     extensions: [".ts", ".tsx", ".js", ".json"],
   },
+  externalsPresets: { node: true },
+  externals: [
+    nodeExternals({
+      // Bundle aliased imports from the sibling nekocap workspace; everything
+      // else in node_modules is required at runtime so packages like
+      // `mongodb` / `whatwg-url` aren't mangled by Terser.
+      allowlist: [/^@\//],
+    }),
+  ],
   optimization: {
     minimize: true,
     minimizer: [
       new TerserPlugin({
         parallel: true,
         terserOptions: {
+          // NestJS DI tokens and @nestjs/mongoose model names come from
+          // `Class.name`, so collapsing distinct classes to the same local
+          // identifier would cause models to clobber each other.
+          keep_classnames: true,
+          keep_fnames: true,
           format: {
             comments: false,
           },
