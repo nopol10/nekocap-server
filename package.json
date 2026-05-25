@@ -10,11 +10,11 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@nestjs/common": "^10.4.15",
-    "@nestjs/core": "^10.4.15",
-    "@nestjs/mongoose": "^10.1.0",
-    "@nestjs/platform-express": "^10.4.15",
-    "@nestjs/schedule": "^4.1.2",
+    "@nestjs/common": "10.4.22",
+    "@nestjs/core": "10.4.22",
+    "@nestjs/mongoose": "10.1.0",
+    "@nestjs/platform-express": "10.4.22",
+    "@nestjs/schedule": "4.1.2",
     "@sentry/node": "^7.6.0",
     "@sentry/tracing": "^7.6.0",
     "ass-compiler": "^0.1.4",
@@ -88,6 +88,12 @@
     "ip-address": "10.1.1",
     "serialize-javascript": "7.0.5",
     "uuid": "11.1.1",
-    "ws": "8.21.0"
+    "ws": "8.21.0",
+    "@nestjs/platform-express": {
+      "body-parser": "1.20.5",
+      "express": "4.22.2",
+      "multer": "2.1.1",
+      "qs": "6.15.2"
+    }
   }
 }
