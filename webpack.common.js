@@ -1,5 +1,4 @@
 const path = require("path");
-const dotenv = require("dotenv");
 const webpack = require("webpack");
 const CopyPlugin = require("copy-webpack-plugin");
 const TerserPlugin = require("terser-webpack-plugin");
@@ -7,12 +6,6 @@ const TsconfigPathsPlugin = require("tsconfig-paths-webpack-plugin");
 const nodeExternals = require("webpack-node-externals");
 const LicenseWebpackPlugin = require("license-webpack-plugin")
   .LicenseWebpackPlugin;
-
-const env = dotenv.config().parsed;
-const envKeys = Object.keys(env).reduce((prev, next) => {
-  prev[`process.env.${next}`] = JSON.stringify(env[next]);
-  return prev;
-}, {});
 
 const nestDir = path.join(__dirname, "src/nest");
 
@@ -63,7 +56,6 @@ module.exports = {
   },
   plugins: [
     new LicenseWebpackPlugin(),
-    new webpack.DefinePlugin(envKeys),
     new webpack.IgnorePlugin({ resourceRegExp: /^pg-native$/ }),
     // NestJS + mongodb optional peer deps we don't use
     new webpack.IgnorePlugin({
