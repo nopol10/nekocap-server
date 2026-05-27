@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, PipelineStage } from "mongoose";
-import { Caption } from "./schemas/caption.schema";
+import { Caption } from "../shared/schemas/caption.schema";
 
 export type CaptionListFields = {
   id: string;

@@ -6,7 +6,7 @@ import {
   TOTAL_SUPPORTED_SITES,
   floorTo,
 } from "../constants";
-import { Caption } from "./schemas/caption.schema";
+import { Caption } from "../shared/schemas/caption.schema";
 import {
   HomepageStats,
   HomepageStatsDocument,

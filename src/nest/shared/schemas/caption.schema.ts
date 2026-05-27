@@ -6,8 +6,8 @@ export class Caption {
   @Prop({ type: String })
   videoId?: string;
 
-  @Prop({ type: Number })
-  videoSource?: number;
+  @Prop({ type: String })
+  videoSource?: string;
 
   @Prop({ type: String })
   language?: string;
