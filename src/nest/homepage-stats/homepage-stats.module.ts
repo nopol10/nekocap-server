@@ -3,7 +3,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { HomepageStatsController } from "./homepage-stats.controller";
 import { HomepageStatsCron } from "./homepage-stats.cron";
 import { HomepageStatsService } from "./homepage-stats.service";
-import { Caption, CaptionSchema } from "./schemas/caption.schema";
+import { Caption, CaptionSchema } from "../shared/schemas/caption.schema";
 import {
   HomepageStats,
   HomepageStatsSchema,

@@ -6,7 +6,7 @@ import {
   TOTAL_SUPPORTED_SITES,
   floorTo,
 } from "../constants";
-import { Caption } from "./schemas/caption.schema";
+import { Caption } from "../shared/schemas/caption.schema";
 import {
   HomepageStats,
   HomepageStatsDocument,
@@ -56,7 +56,7 @@ export class HomepageStatsService {
     this.logger.log("Recomputing homepage stats");
     const startedAt = Date.now();
 
-    const [viewsAgg, captionsCount, captionersAgg, languagesAgg] =
+    const [viewsAgg, captionsCount, captionersAgg, distinctLanguages] =
       await Promise.all([
         this.captionModel
           .aggregate<{ views: number }>([
@@ -71,17 +71,16 @@ export class HomepageStatsService {
           ])
           .exec(),
         this.captionModel
-          .aggregate<{ count: number }>([
-            { $match: { language: { $ne: null } } },
-            { $group: { _id: "$language" } },
-            { $count: "count" },
-          ])
-          .exec(),
+          .distinct("language", { language: { $ne: null } })
+          .exec() as Promise<string[]>,
       ]);
 
     const rawViews = viewsAgg[0]?.views ?? 0;
     const rawCaptioners = captionersAgg[0]?.count ?? 0;
-    const rawLanguages = languagesAgg[0]?.count ?? 0;
+    const baseLanguages = new Set(
+      distinctLanguages.map((code) => code.replace("-", "_").split("_")[0]),
+    );
+    const rawLanguages = baseLanguages.size;
 
     const computedAt = new Date();
     const payload = {
