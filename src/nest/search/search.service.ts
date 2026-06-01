@@ -86,8 +86,7 @@ export class SearchService {
       captionLanguageCode,
     );
 
-    const captionLanguageMatch =
-      this.captionLanguageMatch(captionLanguageCode);
+    const captionLanguageMatch = this.captionLanguageMatch(captionLanguageCode);
     const nameStrategy: Record<string, unknown> = {
       name: titleRegex,
       captionCount: { $gt: 0 },

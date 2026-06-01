@@ -25,6 +25,7 @@ export async function createTestUser({
   // that browser users go through the Firebase auth adapter. Tests bypass
   // that path by saving with the master key (the hook also short-circuits on
   // `request.master`) and logging in afterwards to mint a session token.
+  user.set("authData", {});
   await user.save(null, { useMasterKey: true });
   // `parse` ships its own typings that clash with `@types/parse`: the package's
   // `ParseUser` class (what `logIn` returns) is structurally close to but not
