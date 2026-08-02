@@ -432,10 +432,13 @@ Parse.Cloud.define(
 
       console.log("New caption id by", user.id, ":", newCaption.id);
       newCaptionId = newCaption.id;
-      if (rawCaption && newCaption.id) {
-        let rawCaptionMeta = "";
-        rawCaption.data = "";
-        rawCaptionMeta = JSON.stringify(rawCaption);
+      // Only captions with storable raw data get a raw file.
+      // Uploading an empty file is rejected by the file router ("Invalid file
+      // upload."), which used to fail submissions that carried a raw caption
+      // object without any ass data
+      if (rawCaptionData && rawCaption && newCaption.id) {
+        // The data itself lives in the file, the meta only describes it
+        const rawCaptionMeta = JSON.stringify({ ...rawCaption, data: "" });
         // Save the raw caption's data to a file
         const filename = sanitizeFilename(`${newCaption.id}`);
         console.log("filename", filename);
@@ -449,6 +452,23 @@ Parse.Cloud.define(
         await newCaption.save(null, { useMasterKey: true });
       }
     } catch (e) {
+      // The caption is saved before its raw file, so a failure past that point
+      // would otherwise leave the user with a caption they were told failed.
+      // A raw caption without its raw file is unusable, so remove it
+      if (newCaptionId) {
+        try {
+          const createdCaption = new Parse.Object(PARSE_CLASS.captions);
+          createdCaption.id = newCaptionId;
+          await createdCaption.destroy({ useMasterKey: true });
+        } catch (destroyError) {
+          console.error(
+            "[submitCaption] Failed to remove caption after a failed submission:",
+            newCaptionId,
+            destroyError,
+          );
+        }
+        newCaptionId = undefined;
+      }
       return { status: "error", error: e.message };
     }
     return { status: "success", captionId: newCaptionId };
@@ -509,30 +529,11 @@ Parse.Cloud.define(
       if (!existingCaption) {
         return { status: "error", error: "No such caption" };
       }
-      // Check whether we need to delete any raw file if the caption was raw and is now not.
-      const existingRawFile: Parse.File = existingCaption.get("rawFile");
-      // If there's no raw caption after the update or the existing raw caption will be overwritten
-      // delete the raw file
-      if (
-        (existingRawFile && newCaptionData && !newRawCaption) ||
-        (existingRawFile && newRawCaption)
-      ) {
-        try {
-          await existingRawFile.destroy();
-        } catch (e) {
-          console.warn(
-            `[updateCaption] Failed to delete existing raw file for caption: ${captionId}`,
-          );
-        }
-        existingCaption.set("rawFile", null);
-        existingCaption.set("rawContent", null);
-      }
-      if (newRawCaption) {
-        existingCaption.set("content", JSON.stringify({ tracks: [] }));
-      }
-
       const stringifiedCaption = JSON.stringify(newCaptionData || {});
-      // We only want to store the raws of ass captions
+      // We only want to store the raws of ass captions.
+      // A raw caption without any storable data is treated as no raw caption at
+      // all, otherwise the existing raw file would be dropped in exchange for an
+      // empty file that the file router rejects with "Invalid file upload."
       const rawCaptionData =
         newRawCaption && isAss(newRawCaption.type) && newRawCaption.data
           ? newRawCaption.data
@@ -549,6 +550,28 @@ Parse.Cloud.define(
           error: "Invalid .ass/.ssa file",
         };
       }
+      // Check whether we need to delete any raw file if the caption was raw and is now not.
+      const existingRawFile: Parse.File = existingCaption.get("rawFile");
+      // If there's no raw caption after the update or the existing raw caption will be overwritten
+      // delete the raw file
+      if (
+        (existingRawFile && newCaptionData && !rawCaptionData) ||
+        (existingRawFile && rawCaptionData)
+      ) {
+        try {
+          await existingRawFile.destroy();
+        } catch (e) {
+          console.warn(
+            `[updateCaption] Failed to delete existing raw file for caption: ${captionId}`,
+          );
+        }
+        existingCaption.set("rawFile", null);
+        existingCaption.set("rawContent", null);
+      }
+      if (rawCaptionData) {
+        existingCaption.set("content", JSON.stringify({ tracks: [] }));
+      }
+
       const stringifiedRawCaption = JSON.stringify(rawCaptionData);
       const captionContentLength = Buffer.byteLength(stringifiedCaption);
       const rawContentLength = Buffer.byteLength(stringifiedRawCaption);
@@ -595,10 +618,9 @@ Parse.Cloud.define(
       }
       await existingCaption.save(null, { useMasterKey: true });
 
-      if (newRawCaption && existingCaption.id) {
-        let rawCaptionMeta = "";
-        newRawCaption.data = "";
-        rawCaptionMeta = JSON.stringify(newRawCaption);
+      if (rawCaptionData && newRawCaption && existingCaption.id) {
+        // The data itself lives in the file, the meta only describes it
+        const rawCaptionMeta = JSON.stringify({ ...newRawCaption, data: "" });
         // Save the raw caption's data to a file
         let rawFile: Parse.File = new Parse.File(
           sanitizeFilename(`${existingCaption.id}`),
