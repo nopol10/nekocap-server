@@ -46,6 +46,13 @@ project folder sits beside that or modify the path in `tsconfig.json`:
 }
 ```
 
+## Public API
+
+[Public subtitle API](docs/public-subtitle-api.md) — a **proposal** (not yet
+implemented) for serving NekoCap captions as plain WebVTT files over `/api/v1`,
+so third-party players such as NewPipe forks can offer NekoCap as an extra
+subtitle source.
+
 ## Setup for local development
 
 1. Run `npm install`
