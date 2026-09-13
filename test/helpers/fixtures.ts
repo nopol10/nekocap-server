@@ -79,8 +79,40 @@ export async function createCaptioner({
   return captioner;
 }
 
+export interface CreateVideoInput {
+  sourceId: string;
+  source: string;
+  name?: string;
+  language?: string;
+}
+
+export async function createVideo({
+  sourceId,
+  source,
+  name = "Test Video",
+  language = "en",
+}: CreateVideoInput): Promise<Parse.Object<Parse.Attributes>> {
+  const Video = Parse.Object.extend(PARSE_CLASS.videos);
+  const video = new Video();
+  video.set("sourceId", sourceId);
+  video.set("source", source);
+  video.set("name", name);
+  video.set("language", language);
+  await video.save(null, { useMasterKey: true });
+  return video;
+}
+
 export async function resetCollections(): Promise<void> {
-  const classes = [PARSE_CLASS.captioner, "_User", "_Role", "_Session"];
+  // Captioners go first so the caption afterDelete hook has no counts to
+  // update while the captions are being cleared
+  const classes = [
+    PARSE_CLASS.captioner,
+    PARSE_CLASS.captions,
+    PARSE_CLASS.videos,
+    "_User",
+    "_Role",
+    "_Session",
+  ];
   for (const className of classes) {
     const query = new Parse.Query(className);
     query.limit(1000);
