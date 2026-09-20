@@ -1,4 +1,10 @@
-export const CAPTION_DETAILS_JOIN_PIPELINE = [
+/**
+ * Joins the video a caption belongs to onto the caption as `video`.
+ * Split out from CAPTION_DETAILS_JOIN_PIPELINE so that queries which need to
+ * filter on video fields (e.g. the video title) can perform this join earlier
+ * in the pipeline without paying for the captioner join as well.
+ */
+export const VIDEO_JOIN_PIPELINE = [
   {
     $lookup: {
       from: "videos",
@@ -16,6 +22,12 @@ export const CAPTION_DETAILS_JOIN_PIPELINE = [
   {
     $unwind: { path: "$video", preserveNullAndEmptyArrays: true },
   },
+];
+
+/**
+ * Joins the captioner who created a caption onto the caption as `captioner`.
+ */
+export const CAPTIONER_JOIN_PIPELINE = [
   {
     $lookup: {
       from: "captioner",
@@ -32,4 +44,9 @@ export const CAPTION_DETAILS_JOIN_PIPELINE = [
   {
     $unwind: { path: "$captioner", preserveNullAndEmptyArrays: true },
   },
+];
+
+export const CAPTION_DETAILS_JOIN_PIPELINE = [
+  ...VIDEO_JOIN_PIPELINE,
+  ...CAPTIONER_JOIN_PIPELINE,
 ];
