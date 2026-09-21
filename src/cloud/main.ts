@@ -727,6 +727,7 @@ Parse.Cloud.define(
       limit,
       offset,
       advancedFilter,
+      titleFilter,
     } = request.params;
     const { result: outputSubs, hasMore } = await getCaptionerCaptions({
       captionerId,
@@ -735,6 +736,7 @@ Parse.Cloud.define(
       userId: request.user?.id,
       tags,
       advancedFilter,
+      titleFilter,
     });
 
     return {

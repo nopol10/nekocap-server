@@ -50,6 +50,8 @@ export const captionToListFields = async (
 export const captionWithJoinedDataToListFields = async (
   joinedCaption: Record<string, any>,
 ): Promise<CaptionListFields> => {
+  // The video join preserves captions whose video document is missing, so this
+  // can be undefined.
   const video = joinedCaption.video;
 
   const sub = Parse.Object.fromJSON({
@@ -57,8 +59,8 @@ export const captionWithJoinedDataToListFields = async (
     ...joinedCaption,
   });
   const videoId = sub.get("videoId");
-  let videoName = video.name,
-    videoLanguage = video.language,
+  let videoName = video?.name || "",
+    videoLanguage = video?.language || "",
     createdDate = unixSeconds(new Date(joinedCaption.createdAt)),
     updatedDate = unixSeconds(new Date(joinedCaption.updatedAt));
 

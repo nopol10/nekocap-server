@@ -4,8 +4,13 @@ import {
 } from "@/common/feature/video/types";
 import { getCaptionGroupTagName } from "@/common/feature/video/utils";
 import { CaptionSchema } from "@/common/providers/parse/types";
-import { PARSE_CLASS } from "cloud/constants";
-import { CAPTION_DETAILS_JOIN_PIPELINE } from "./caption-details-join-pipeline";
+import { MAX_CAPTION_TITLE_FILTER_LENGTH, PARSE_CLASS } from "cloud/constants";
+import { escapeRegexInString } from "cloud/utils";
+import {
+  CAPTION_DETAILS_JOIN_PIPELINE,
+  CAPTIONER_JOIN_PIPELINE,
+  VIDEO_JOIN_PIPELINE,
+} from "./caption-details-join-pipeline";
 import { captionWithJoinedDataToListFields } from "./caption-to-list-field";
 
 const MAX_SEARCH_TAG_LIMIT = 5;
@@ -37,6 +42,11 @@ type GetCaptionBaseParam = {
   languageCodes?: string[];
   tags: string[];
   advancedFilter?: AdvancedFilter;
+  /**
+   * Keeps only captions whose original video title or translated title contains
+   * this string (case insensitive).
+   */
+  titleFilter?: string;
 };
 
 type GetCaptionsWithCountOnly = (param: GetCaptionBaseParam) => Promise<number>;
@@ -45,7 +55,18 @@ type GetCaptionsWithDetails = (
   param: GetCaptionBaseParam,
 ) => Promise<{ result: CaptionListFields[]; hasMore: boolean }>;
 
-const getCaptionResult = async ({
+/**
+ * Trims the caller provided title filter and caps its length so that a huge
+ * string can't be turned into an expensive regex.
+ */
+const normalizeTitleFilter = (titleFilter?: string): string => {
+  return (titleFilter || "").trim().slice(0, MAX_CAPTION_TITLE_FILTER_LENGTH);
+};
+
+/**
+ * Builds the aggregation stages used to list captions.
+ */
+export const buildCaptionQueryStages = ({
   limit = 10,
   offset = 0,
   captionerId,
@@ -54,9 +75,8 @@ const getCaptionResult = async ({
   languageCodes,
   tags = [],
   advancedFilter = "all",
-}: GetCaptionBaseParam) => {
-  const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
-
+  titleFilter,
+}: GetCaptionBaseParam): Record<string, any>[] => {
   const filters: {
     creatorId?: string;
     privacy?: MongoFilter<CaptionPrivacy | undefined>;
@@ -108,6 +128,7 @@ const getCaptionResult = async ({
             ],
           }
         : filters;
+  const normalizedTitleFilter = normalizeTitleFilter(titleFilter);
   const stages: Record<string, any>[] = [
     {
       $match: matchStage,
@@ -115,18 +136,47 @@ const getCaptionResult = async ({
     {
       $sort: { _created_at: -1 },
     },
-    {
-      $skip: offset,
-    },
   ];
+  if (normalizedTitleFilter) {
+    // The original title lives on the video document, so the video join has to
+    // happen before captions can be matched on it. The $match above has already
+    // narrowed the pipeline down (for a profile page, to a single captioner's
+    // captions via the creatorId index) and the join itself is served by the
+    // videos.sourceId index, so only the documents that $skip/$limit actually
+    // pull through the pipeline get joined.
+    const titleRegex = {
+      $regex: escapeRegexInString(normalizedTitleFilter),
+      $options: "i",
+    };
+    stages.push(...VIDEO_JOIN_PIPELINE, {
+      $match: {
+        $or: [{ translatedTitle: titleRegex }, { "video.name": titleRegex }],
+      },
+    });
+  }
+  stages.push({
+    $skip: offset,
+  });
   if (limit >= 0) {
     stages.push({
       $limit: limit + 1,
     });
   }
-  stages.push(...CAPTION_DETAILS_JOIN_PIPELINE);
+  // The video has already been joined on above when filtering by title.
+  stages.push(
+    ...(normalizedTitleFilter
+      ? CAPTIONER_JOIN_PIPELINE
+      : CAPTION_DETAILS_JOIN_PIPELINE),
+  );
 
-  let result: Record<string, any>[] = await query.aggregate(stages);
+  return stages;
+};
+
+const getCaptionResult = async (param: GetCaptionBaseParam) => {
+  const query = new Parse.Query<CaptionSchema>(PARSE_CLASS.captions);
+  const result: Record<string, any>[] = await query.aggregate(
+    buildCaptionQueryStages(param),
+  );
   return result;
 };
 
@@ -168,9 +218,16 @@ export const getCaptionerCaptions = async ({
   userId,
   tags,
   advancedFilter,
+  titleFilter,
 }: Pick<
   Parameters<typeof getCaptions>[0],
-  "limit" | "offset" | "captionerId" | "userId" | "tags" | "advancedFilter"
+  | "limit"
+  | "offset"
+  | "captionerId"
+  | "userId"
+  | "tags"
+  | "advancedFilter"
+  | "titleFilter"
 >) => {
   return await getCaptions({
     limit,
@@ -180,5 +237,6 @@ export const getCaptionerCaptions = async ({
     getRejected: true,
     tags,
     advancedFilter,
+    titleFilter,
   });
 };
