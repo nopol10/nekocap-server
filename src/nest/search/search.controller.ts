@@ -1,12 +1,9 @@
-import { Controller, Get, HttpCode, Query } from "@nestjs/common";
-import {
-  SearchService,
-  VideoSearchResponsePayload,
-} from "./search.service";
+import { Controller, Get, HttpCode, Inject, Query } from "@nestjs/common";
+import { SearchService, VideoSearchResponsePayload } from "./search.service";
 
 @Controller("search")
 export class SearchController {
-  constructor(private readonly service: SearchService) {}
+  constructor(@Inject(SearchService) private readonly service: SearchService) {}
 
   @Get()
   @HttpCode(200)

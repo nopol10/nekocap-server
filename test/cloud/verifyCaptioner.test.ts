@@ -8,14 +8,14 @@ import {
   it,
   type TestContext,
 } from "vitest";
-import { ERROR_MESSAGES } from "../../src/cloud/constants";
+import { ERROR_MESSAGES } from "../../src/nest/constants";
 import {
   createCaptioner,
   createTestUser,
   makeUserAdmin,
   resetCollections,
 } from "../helpers/fixtures";
-import { invokeCloudFunction } from "../helpers/invoke-cloud-function";
+import { TRANSPORTS, invokeApi } from "../helpers/invoke-api";
 import {
   MongoUnavailableError,
   startParseServer,
@@ -33,7 +33,7 @@ const skipIfNoServer = (ctx: TestContext) => {
   if (skipReason) ctx.skip(skipReason);
 };
 
-describe("verifyCaptioner cloud function", () => {
+describe.each(TRANSPORTS)("verifyCaptioner via %s", (transport) => {
   beforeAll(async () => {
     try {
       await startParseServer();
@@ -59,7 +59,7 @@ describe("verifyCaptioner cloud function", () => {
 
   it("returns NOT_LOGGED_IN when no session token is supplied", async (ctx) => {
     skipIfNoServer(ctx);
-    const res = await invokeCloudFunction<ServerResponse>("verifyCaptioner", {
+    const res = await invokeApi<ServerResponse>(transport, "verifyCaptioner", {
       targetUserId: "anyone",
     });
     expect(res).toEqual({
@@ -71,7 +71,8 @@ describe("verifyCaptioner cloud function", () => {
   it("returns 'Not authorized!' when caller is not an admin", async (ctx) => {
     skipIfNoServer(ctx);
     const { sessionToken } = await createTestUser({ username: "non-admin" });
-    const res = await invokeCloudFunction<ServerResponse>(
+    const res = await invokeApi<ServerResponse>(
+      transport,
       "verifyCaptioner",
       { targetUserId: "any" },
       { sessionToken },
@@ -83,7 +84,8 @@ describe("verifyCaptioner cloud function", () => {
     skipIfNoServer(ctx);
     const { user, sessionToken } = await createTestUser({ username: "admin1" });
     await makeUserAdmin(user);
-    const res = await invokeCloudFunction<ServerResponse>(
+    const res = await invokeApi<ServerResponse>(
+      transport,
       "verifyCaptioner",
       { targetUserId: "missing" },
       { sessionToken },
@@ -101,7 +103,8 @@ describe("verifyCaptioner cloud function", () => {
       verified: false,
     });
 
-    const res = await invokeCloudFunction<ServerResponse>(
+    const res = await invokeApi<ServerResponse>(
+      transport,
       "verifyCaptioner",
       { targetUserId: "target-1" },
       { sessionToken },
@@ -122,7 +125,8 @@ describe("verifyCaptioner cloud function", () => {
       verified: true,
     });
 
-    const res = await invokeCloudFunction<ServerResponse>(
+    const res = await invokeApi<ServerResponse>(
+      transport,
       "verifyCaptioner",
       { targetUserId: "target-2" },
       { sessionToken },
@@ -139,7 +143,8 @@ describe("verifyCaptioner cloud function", () => {
     await makeUserAdmin(user);
     await Parse.Config.save({ maintenance: true }, {});
 
-    const res = await invokeCloudFunction<ServerResponse>(
+    const res = await invokeApi<ServerResponse>(
+      transport,
       "verifyCaptioner",
       { targetUserId: "anything" },
       { sessionToken },
