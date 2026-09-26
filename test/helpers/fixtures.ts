@@ -46,6 +46,21 @@ export async function makeUserAdmin(
   await addUserToRole(user, ROLES.admin);
 }
 
+/**
+ * Creates the role if it doesn't exist yet
+ */
+export async function ensureRole(roleName: string): Promise<Parse.Role> {
+  const acl = new Parse.ACL();
+  acl.setPublicReadAccess(true);
+  const query = new Parse.Query(Parse.Role);
+  query.equalTo("name", roleName);
+  const existing = await query.first({ useMasterKey: true });
+  if (existing) {
+    return existing;
+  }
+  return new Parse.Role(roleName, acl).save(null, { useMasterKey: true });
+}
+
 export async function addUserToRole(
   user: Parse.User<Parse.Attributes>,
   roleName: string,

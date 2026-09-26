@@ -1,5 +1,6 @@
 import { Logger } from "@nestjs/common";
 import * as admin from "firebase-admin";
+import { readFileSync } from "fs";
 import path from "path";
 import {
   type IdentityProvider,
@@ -44,8 +45,7 @@ export class FirebaseIdentityProvider implements IdentityProvider {
     try {
       return JSON.parse(data);
     } catch (e) {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      return require(path.resolve(".", data));
+      return JSON.parse(readFileSync(path.resolve(".", data), "utf8"));
     }
   }
 

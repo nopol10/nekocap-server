@@ -1,3 +1,4 @@
+import type { LogLevel } from "@nestjs/common";
 import type { IdentityProvider } from "./auth/providers/identity-provider";
 
 export const NEKOCAP_OPTIONS = Symbol("NEKOCAP_OPTIONS");
@@ -19,6 +20,7 @@ export type NekoCapOptions = {
   identityProviders?: IdentityProvider[];
   /** Whether scheduled jobs (e.g. homepage stats) should run */
   enableSchedule?: boolean;
+  logLevels?: LogLevel[];
 };
 
 /**

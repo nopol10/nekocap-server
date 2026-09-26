@@ -5,6 +5,8 @@ import {
   CAPTIONER_PRIVATE_COLLECTION,
   CAPTIONS_COLLECTION,
   SCHEMA_COLLECTION,
+  SESSION_COLLECTION,
+  USER_COLLECTION,
   VIDEOS_COLLECTION,
 } from "../constants";
 import { ParseDbService } from "./parse-db.service";
@@ -14,6 +16,22 @@ import { ParseDbService } from "./parse-db.service";
  * notation (see database/nekocap-schema.json).
  */
 const CLASS_FIELDS: Record<string, Record<string, string>> = {
+  // Parse maps `_p_user` to the session's user only when it knows `user` is
+  // a pointer, so sessions created here need the _Session schema to exist
+  [USER_COLLECTION]: {
+    username: "string",
+    email: "string",
+    emailVerified: "boolean",
+    authData: "object",
+  },
+  [SESSION_COLLECTION]: {
+    restricted: "boolean",
+    user: "*_User",
+    installationId: "string",
+    sessionToken: "string",
+    expiresAt: "date",
+    createdWith: "object",
+  },
   [CAPTIONS_COLLECTION]: {
     content: "string",
     creatorId: "string",
