@@ -99,6 +99,7 @@ export async function startParseServer(): Promise<TestServer> {
     publicServerURL: "http://127.0.0.1:0/parse",
     identityProviders: [new TestIdentityProvider()],
     enableSchedule: false,
+    logLevels: ["error"],
   };
   const nestApp = await createNestApp(app, nestOptions);
 

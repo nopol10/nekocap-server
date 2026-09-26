@@ -32,7 +32,7 @@ export async function createNestApp(
     new ExpressAdapter(expressApp),
     {
       bodyParser: false,
-      logger: ["log", "warn", "error"],
+      logger: options.logLevels || ["log", "warn", "error"],
     },
   );
 
