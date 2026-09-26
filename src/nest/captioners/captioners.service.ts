@@ -98,6 +98,7 @@ export class CaptionersService {
     }: { profileId: string; withCaptions?: boolean },
     ctx: RequestContext,
   ): Promise<PublicProfileResponse> {
+    profileId = String(profileId ?? "");
     const { result: captions } = withCaptions
       ? await this.captions.getCaptionerCaptions({
           captionerId: profileId,
@@ -122,15 +123,19 @@ export class CaptionersService {
     if (error || !ctx.user) {
       return error as ServerResponse;
     }
-    const {
-      languageCodes,
-      name,
-      donationLink = "",
-      profileMessage = "",
-      userId: targetUserId,
-    } = params;
+    const { userId: targetUserId } = params;
+    // Parse validated these types against its schema, check them here instead
+    const name = String(params.name ?? "");
+    const donationLink = String(params.donationLink ?? "");
+    const profileMessage = String(params.profileMessage ?? "");
+    const languageCodes = Array.isArray(params.languageCodes)
+      ? params.languageCodes.map(String)
+      : [];
     const userId = ctx.user.id;
     const isAdmin = await this.roles.hasAdminRole(userId);
+    if (targetUserId !== undefined && typeof targetUserId !== "string") {
+      return { status: "error", error: "Not authorized!" };
+    }
     if (!isAdmin && targetUserId && targetUserId !== userId) {
       // Only an admin can change someone else's profile
       return { status: "error", error: "Not authorized!" };

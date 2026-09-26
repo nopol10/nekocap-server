@@ -41,6 +41,24 @@ describe("legacy Parse bridge", () => {
     ).toBe(1);
   });
 
+  it("doesn't let object params act as query operators", async (ctx) => {
+    skipIfNoServer(ctx);
+    const user = new Parse.User();
+    user.set("username", "someone");
+    user.set("password", "password");
+    user.set("authData", {});
+    await user.save(null, { useMasterKey: true });
+
+    expect(
+      await Parse.Cloud.run("loadProfile", { profileId: { $ne: null } }),
+    ).toEqual({ status: "error" });
+    expect(
+      await Parse.Cloud.run("loadUserCaptions", {
+        captionerId: { $ne: null },
+      }),
+    ).toMatchObject({ status: "success", captions: [] });
+  });
+
   it("still rejects Parse signups without authData", async () => {
     const user = new Parse.User();
     user.set("username", "no-auth-data");
