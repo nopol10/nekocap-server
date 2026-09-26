@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   Logger,
   OnApplicationBootstrap,
@@ -10,7 +11,10 @@ import { HomepageStatsService } from "./homepage-stats.service";
 export class HomepageStatsCron implements OnApplicationBootstrap {
   private readonly logger = new Logger(HomepageStatsCron.name);
 
-  constructor(private readonly service: HomepageStatsService) {}
+  constructor(
+    @Inject(HomepageStatsService)
+    private readonly service: HomepageStatsService,
+  ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     try {
@@ -29,7 +33,10 @@ export class HomepageStatsCron implements OnApplicationBootstrap {
     try {
       await this.service.recompute();
     } catch (error) {
-      this.logger.error("Scheduled homepage stats recompute failed", error as Error);
+      this.logger.error(
+        "Scheduled homepage stats recompute failed",
+        error as Error,
+      );
     }
   }
 }

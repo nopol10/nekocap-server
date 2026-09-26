@@ -5,21 +5,3 @@ export const PARSE_CLASS = {
   captionLikes: "captionLikes",
   videos: "videos",
 };
-
-export const CAPTION_SUBMISSION_COOLDOWN = 5 * 60 * 1000;
-
-export const ERROR_MESSAGES = {
-  MAINTENANCE: "Sorry, we are in maintenance mode. Please try again later.",
-  NOT_LOGGED_IN: "Not authorized! Please login",
-  BANNED: "Not authorized! You are banned!",
-};
-
-export const MAX_CAPTION_GROUP_TAG_NAME_LENGTH = 64;
-
-export const MAX_CAPTION_GROUP_TAG_LIMIT = 5;
-
-/**
- * Caps the length of the video title filter used when listing a captioner's
- * captions.
- */
-export const MAX_CAPTION_TITLE_FILTER_LENGTH = 100;
