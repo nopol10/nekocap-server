@@ -137,6 +137,7 @@ export class CaptionsService {
    * its sub languages
    */
   async getLatestInLanguage(languageCode: string): Promise<CaptionsResponse> {
+    languageCode = String(languageCode ?? "");
     const { result } = await this.getCaptions({
       limit: 10,
       offset: 0,
@@ -237,13 +238,13 @@ export class CaptionsService {
     ctx: RequestContext,
   ): Promise<CaptionsResponse> {
     const { result, hasMore } = await this.getCaptionerCaptions({
-      captionerId,
+      captionerId: String(captionerId ?? ""),
       limit: Number(limit) || 50,
       offset: Number(offset) || 0,
       userId: ctx.user?.id,
-      tags,
+      tags: Array.isArray(tags) ? tags.map(String) : [],
       advancedFilter,
-      titleFilter,
+      titleFilter: typeof titleFilter === "string" ? titleFilter : undefined,
     });
     return { status: "success", captions: result, hasMore };
   }

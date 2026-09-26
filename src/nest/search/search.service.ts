@@ -85,7 +85,8 @@ export class SearchService {
   async searchVideoDocuments(
     params: SearchParams,
   ): Promise<{ docs: AggregatedVideo[]; hasMoreResults: boolean }> {
-    const { title = "", limit = 0, offset = 0 } = params;
+    const { limit = 0, offset = 0 } = params;
+    const title = String(params.title ?? "");
     const videoLanguageCode = normalizeLanguageCode(params.videoLanguageCode);
     const captionLanguageCode = normalizeLanguageCode(
       params.captionLanguageCode,
