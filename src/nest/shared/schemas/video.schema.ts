@@ -10,8 +10,9 @@ export class Video {
   @Prop({ type: String })
   sourceId?: string;
 
-  @Prop({ type: Number })
-  source?: number;
+  // Parse stores the video source as a string
+  @Prop({ type: String })
+  source?: string;
 
   @Prop({ type: String })
   name?: string;
