@@ -95,7 +95,7 @@ export class UsersService {
    * The public profile of a captioner
    */
   async getUserProfile(userId: string): Promise<CaptionerFields | undefined> {
-    if (!userId) {
+    if (!userId || typeof userId !== "string") {
       return undefined;
     }
     const captioner = await this.findCaptioner(userId);
