@@ -14,5 +14,6 @@ import { Video, VideoSchema } from "../shared/schemas/video.schema";
   ],
   controllers: [SearchController],
   providers: [SearchService],
+  exports: [SearchService],
 })
 export class SearchModule {}

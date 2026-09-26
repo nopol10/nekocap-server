@@ -3,6 +3,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import { Model, PipelineStage } from "mongoose";
 import { Caption } from "../shared/schemas/caption.schema";
 import { Video, VideoCaptionData } from "../shared/schemas/video.schema";
+import { escapeRegexInString } from "../shared/utils";
 
 // Mirrors VideoFields in nekocap's src/common/feature/video/types.ts (the shape
 // the frontend's VideoSearchResults expects for each result).
@@ -30,7 +31,10 @@ export type SearchParams = {
   offset?: number;
 };
 
-type AggregatedVideo = {
+export type AggregatedVideo = {
+  _id?: string;
+  _created_at?: Date;
+  _updated_at?: Date;
   name?: string;
   language?: string;
   source?: string | number;
@@ -47,10 +51,6 @@ type CaptionVideoRef = {
 
 const ANY = "any";
 const PUBLIC_PRIVACY = 0;
-
-// Mirrors escapeRegexInString in src/cloud/utils.ts.
-const escapeRegexInString = (input: string): string =>
-  input.replace(/[#-.]|[[-^]|[?|{}]/g, "\\$&");
 
 // Normalises a language code the way the Parse `search` cloud function does:
 // empty / unknown codes are treated as "any" (no filtering).
@@ -71,7 +71,21 @@ export class SearchService {
   ) {}
 
   async search(params: SearchParams): Promise<VideoSearchResponsePayload> {
-    const { title, limit = 0, offset = 0 } = params;
+    const { docs, hasMoreResults } = await this.searchVideoDocuments(params);
+    return {
+      status: "success",
+      videos: docs.map((doc) => this.toFields(doc)),
+      hasMoreResults,
+    };
+  }
+
+  /**
+   * The raw video documents matching the search
+   */
+  async searchVideoDocuments(
+    params: SearchParams,
+  ): Promise<{ docs: AggregatedVideo[]; hasMoreResults: boolean }> {
+    const { title = "", limit = 0, offset = 0 } = params;
     const videoLanguageCode = normalizeLanguageCode(params.videoLanguageCode);
     const captionLanguageCode = normalizeLanguageCode(
       params.captionLanguageCode,
@@ -127,8 +141,7 @@ export class SearchService {
       .exec();
 
     return {
-      status: "success",
-      videos: docs.slice(0, limit).map((doc) => this.toFields(doc)),
+      docs: docs.slice(0, limit),
       hasMoreResults: docs.length > limit,
     };
   }

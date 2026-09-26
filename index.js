@@ -33,6 +33,10 @@ let publicServerURL = process.env.PROD
   ? process.env.PUBLIC_SERVER_URL
   : serverURL;
 
+const appId = process.env.APP_ID || "myAppId";
+const masterKey = process.env.MASTER_KEY || "";
+const databaseURI = databaseUri || "mongodb://localhost:27017/dev";
+
 const server = new ParseServer({
   auth: {
     firebase: new FirebaseAuthAdapter(),
@@ -40,10 +44,10 @@ const server = new ParseServer({
   },
   allowHeaders: ["sentry-trace", "baggage"],
   allowClientClassCreation: false,
-  databaseURI: databaseUri || "mongodb://localhost:27017/dev",
+  databaseURI,
   cloud: process.env.CLOUD_CODE_MAIN || __dirname + "/cloud.js",
-  appId: process.env.APP_ID || "myAppId",
-  masterKey: process.env.MASTER_KEY || "",
+  appId,
+  masterKey,
   masterKeyIps: ["0.0.0.0/0", "::/0"],
   serverURL,
   publicServerURL,
@@ -70,12 +74,17 @@ async function start() {
   // Serve the Parse API on the /parse URL prefix
   app.use(mountPath, server.app);
 
-  try {
-    const nestEntry = require("./nest.js");
-    await nestEntry.createNestApp(app);
-  } catch (e) {
-    console.error("Failed to bootstrap NestJS sub-app:", e);
-  }
+  // The NestJS app serves the REST API and runs all of the business logic,
+  // including the Parse cloud functions (which delegate to it), so the
+  // server cannot run without it.
+  const nestEntry = require("./nest.js");
+  await nestEntry.createNestApp(app, {
+    databaseURI,
+    appId,
+    masterKey,
+    publicServerURL,
+    enableSchedule: true,
+  });
 
   Sentry.init({
     dsn: process.env.BACKEND_SENTRY_DSN,
@@ -114,7 +123,10 @@ async function start() {
   });
 }
 
-void start();
+start().catch((e) => {
+  console.error("Failed to start the NekoCap server:", e);
+  process.exit(1);
+});
 
 // // This will enable the Live Query real-time server
 // ParseServer.createLiveQueryServer(httpServer);
