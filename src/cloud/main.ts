@@ -1,5 +1,6 @@
 /// <reference path="../../../nekocap/src/declarations.d.ts" />
 // Above is needed due to references to globalThis in shared imports
+import { CLOUD_FUNCTIONS } from "./cloud-functions";
 import "./hooks.ts";
 import { getNestBridge, toBridgeContext } from "./nest-bridge";
 
@@ -33,45 +34,6 @@ const responseTransforms: Record<string, (response: any) => unknown> = {
     videos: (response.videos || []).map(toParseObject),
   }),
 };
-
-/**
- * Every cloud function the NekoCap clients (and migration scripts) call.
- * Each one runs the NestJS service backing the equivalent REST endpoint.
- */
-export const CLOUD_FUNCTIONS = [
-  "findCaptions",
-  "loadCaption",
-  "submitCaption",
-  "updateCaption",
-  "loadPrivateCaptionerData",
-  "loadUserCaptions",
-  "updateCaptionerProfile",
-  "loadProfile",
-  "deleteCaption",
-  "likeCaption",
-  "dislikeCaption",
-  "rejectCaption",
-  "verifyCaption",
-  "loadLatestCaptions",
-  "loadLatestLanguageCaptions",
-  "loadPopularCaptions",
-  "loadCaptionForReview",
-  "assignReviewerRole",
-  "assignReviewerManagerRole",
-  "search",
-  "verifyCaptioner",
-  "banCaptioner",
-  "browse",
-  "getOwnProfileTags",
-  "deleteProfileTag",
-  "globalStats",
-  "getAutoCaptionList",
-  // Migrations (master key only)
-  "createVideo",
-  "createBatchYoutubeVideos",
-  "migrationCreateCaptionerWithoutUser",
-  "migrationCreateCaption",
-];
 
 for (const name of CLOUD_FUNCTIONS) {
   Parse.Cloud.define(name, async (request: Parse.Cloud.FunctionRequest) => {

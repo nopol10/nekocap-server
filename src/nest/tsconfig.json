@@ -16,13 +16,9 @@
     "outDir": "../../dist/nest-build",
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "../../../nekocap/src/*"
-      ]
+      "@/*": ["../../../nekocap/src/*"]
     },
     "rootDir": "../../.."
   },
-  "include": [
-    "**/*"
-  ]
+  "include": ["**/*"]
 }
