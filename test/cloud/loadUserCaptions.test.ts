@@ -15,7 +15,7 @@ import {
   createVideo,
   resetCollections,
 } from "../helpers/fixtures";
-import { invokeCloudFunction } from "../helpers/invoke-cloud-function";
+import { TRANSPORTS, type Transport, invokeApi } from "../helpers/invoke-api";
 import {
   MongoUnavailableError,
   startParseServer,
@@ -43,13 +43,15 @@ const skipIfNoServer = (ctx: TestContext) => {
   if (skipReason) ctx.skip(skipReason);
 };
 
-const loadUserCaptions = (params: Record<string, unknown>) =>
-  invokeCloudFunction<CaptionsResponse>("loadUserCaptions", params);
+const loadUserCaptions = (
+  transport: Transport,
+  params: Record<string, unknown>,
+) => invokeApi<CaptionsResponse>(transport, "loadUserCaptions", params);
 
 const videoNames = (response: CaptionsResponse) =>
   response.captions.map((caption) => caption.videoName).sort();
 
-describe("loadUserCaptions cloud function", () => {
+describe.each(TRANSPORTS)("loadUserCaptions via %s", (transport) => {
   let captionerId: string;
 
   beforeAll(async () => {
@@ -121,7 +123,10 @@ describe("loadUserCaptions cloud function", () => {
   it("returns every caption when no title filter is given", async (ctx) => {
     skipIfNoServer(ctx);
 
-    const response = await loadUserCaptions({ captionerId, limit: 20 });
+    const response = await loadUserCaptions(transport, {
+      captionerId,
+      limit: 20,
+    });
 
     expect(response.status).toBe("success");
     expect(videoNames(response)).toEqual([
@@ -134,7 +139,7 @@ describe("loadUserCaptions cloud function", () => {
   it("keeps captions matching either the original or the translated title", async (ctx) => {
     skipIfNoServer(ctx);
 
-    const response = await loadUserCaptions({
+    const response = await loadUserCaptions(transport, {
       captionerId,
       limit: 20,
       titleFilter: "spy",
@@ -150,7 +155,7 @@ describe("loadUserCaptions cloud function", () => {
   it("matches the title regardless of case", async (ctx) => {
     skipIfNoServer(ctx);
 
-    const response = await loadUserCaptions({
+    const response = await loadUserCaptions(transport, {
       captionerId,
       limit: 20,
       titleFilter: "FRIEREN",
@@ -162,7 +167,7 @@ describe("loadUserCaptions cloud function", () => {
   it("treats regex characters in the filter as text", async (ctx) => {
     skipIfNoServer(ctx);
 
-    const response = await loadUserCaptions({
+    const response = await loadUserCaptions(transport, {
       captionerId,
       limit: 20,
       titleFilter: "spy.*family",
@@ -175,7 +180,7 @@ describe("loadUserCaptions cloud function", () => {
   it("ignores a filter that is only whitespace", async (ctx) => {
     skipIfNoServer(ctx);
 
-    const response = await loadUserCaptions({
+    const response = await loadUserCaptions(transport, {
       captionerId,
       limit: 20,
       titleFilter: "   ",
@@ -187,7 +192,7 @@ describe("loadUserCaptions cloud function", () => {
   it("paginates the filtered captions", async (ctx) => {
     skipIfNoServer(ctx);
 
-    const firstPage = await loadUserCaptions({
+    const firstPage = await loadUserCaptions(transport, {
       captionerId,
       limit: 1,
       offset: 0,
@@ -196,7 +201,7 @@ describe("loadUserCaptions cloud function", () => {
     expect(firstPage.captions).toHaveLength(1);
     expect(firstPage.hasMore).toBe(true);
 
-    const secondPage = await loadUserCaptions({
+    const secondPage = await loadUserCaptions(transport, {
       captionerId,
       limit: 1,
       offset: 1,

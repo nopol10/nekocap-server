@@ -1,9 +1,13 @@
+import type { INestApplication } from "@nestjs/common";
 import express from "express";
 import { Server } from "http";
 import { MongoMemoryReplSet } from "mongodb-memory-server";
 import path from "node:path";
 import { ParseServer } from "parse-server";
 import Parse from "parse/node";
+import { createNestApp } from "../../src/nest/main";
+import type { NekoCapOptions } from "../../src/nest/options";
+import { TestIdentityProvider } from "./test-identity-provider";
 
 interface ParseServerInstance {
   app: express.Express;
@@ -19,7 +23,10 @@ interface TestServer {
   appId: string;
   masterKey: string;
   serverURL: string;
+  /** Base url of the NestJS REST API, e.g. http://127.0.0.1:1234/api/v1 */
+  apiURL: string;
   parseServer: ParseServerInstance;
+  nestApp: INestApplication;
   mongo: MongoMemoryReplSet;
   httpServer: Server;
 }
@@ -82,6 +89,20 @@ export async function startParseServer(): Promise<TestServer> {
   const app = express();
   app.use("/parse", parseServer.app);
 
+  // The NestJS app runs in the same express app as Parse, as it does in
+  // production. The Parse cloud functions delegate to it.
+  const nestOptions: NekoCapOptions = {
+    databaseURI,
+    appId: APP_ID,
+    masterKey: MASTER_KEY,
+    // Updated once the server is listening
+    publicServerURL: "http://127.0.0.1:0/parse",
+    identityProviders: [new TestIdentityProvider()],
+    enableSchedule: false,
+    logLevels: ["error"],
+  };
+  const nestApp = await createNestApp(app, nestOptions);
+
   const httpServer = await new Promise<Server>((resolve, reject) => {
     const s = app.listen(0, "127.0.0.1", () => resolve(s));
     s.on("error", reject);
@@ -91,6 +112,8 @@ export async function startParseServer(): Promise<TestServer> {
     throw new Error("Failed to bind Parse test server to a port");
   }
   const serverURL = `http://127.0.0.1:${address.port}/parse`;
+  const apiURL = `http://127.0.0.1:${address.port}/api/v1`;
+  nestOptions.publicServerURL = serverURL;
 
   Parse.initialize(APP_ID, undefined, MASTER_KEY);
   (Parse as unknown as { serverURL: string }).serverURL = serverURL;
@@ -99,17 +122,27 @@ export async function startParseServer(): Promise<TestServer> {
     appId: APP_ID,
     masterKey: MASTER_KEY,
     serverURL,
+    apiURL,
     parseServer,
+    nestApp,
     mongo,
     httpServer,
   };
   return current;
 }
 
+export function getTestServer(): TestServer {
+  if (!current) {
+    throw new Error("The test server has not been started");
+  }
+  return current;
+}
+
 export async function stopParseServer(): Promise<void> {
   if (!current) return;
-  const { httpServer, parseServer, mongo } = current;
+  const { httpServer, parseServer, nestApp, mongo } = current;
   await new Promise<void>((resolve) => httpServer.close(() => resolve()));
+  await nestApp.close();
   // parse-server's handleShutdown unconditionally calls `this.server.close`,
   // but `this.server` is never assigned when parse-server is mounted as
   // express middleware (we own the http listener above). Swallow that case.
