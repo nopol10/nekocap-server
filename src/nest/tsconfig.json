@@ -13,8 +13,12 @@
     "strict": true,
     "sourceMap": false,
     "noEmit": false,
-    "rootDir": ".",
-    "outDir": "../../dist/nest-build"
+    "outDir": "../../dist/nest-build",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../../../nekocap/src/*"]
+    },
+    "rootDir": "../../.."
   },
   "include": ["**/*"]
 }

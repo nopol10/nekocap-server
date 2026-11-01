@@ -1,7 +1,7 @@
 import Parse from "parse/node";
 
 import { PARSE_CLASS } from "../../src/cloud/constants";
-import { role } from "../../src/cloud/roles";
+import { ROLES } from "../../src/nest/constants";
 
 export interface TestUser {
   user: Parse.User<Parse.Attributes>;
@@ -22,9 +22,9 @@ export async function createTestUser({
   user.set("password", password);
   if (email) user.set("email", email);
   // The Parse `_User` beforeSave hook rejects signups without `authData` so
-  // that browser users go through the Firebase auth adapter. Tests bypass
-  // that path by saving with the master key (the hook also short-circuits on
-  // `request.master`) and logging in afterwards to mint a session token.
+  // that browser users go through the Firebase auth adapter. Tests satisfy
+  // it with an empty authData and log in with the password afterwards to
+  // mint a session token.
   user.set("authData", {});
   await user.save(null, { useMasterKey: true });
   // `parse` ships its own typings that clash with `@types/parse`: the package's
@@ -43,17 +43,39 @@ export async function createTestUser({
 export async function makeUserAdmin(
   user: Parse.User<Parse.Attributes>,
 ): Promise<void> {
+  await addUserToRole(user, ROLES.admin);
+}
+
+/**
+ * Creates the role if it doesn't exist yet
+ */
+export async function ensureRole(roleName: string): Promise<Parse.Role> {
+  const acl = new Parse.ACL();
+  acl.setPublicReadAccess(true);
+  const query = new Parse.Query(Parse.Role);
+  query.equalTo("name", roleName);
+  const existing = await query.first({ useMasterKey: true });
+  if (existing) {
+    return existing;
+  }
+  return new Parse.Role(roleName, acl).save(null, { useMasterKey: true });
+}
+
+export async function addUserToRole(
+  user: Parse.User<Parse.Attributes>,
+  roleName: string,
+): Promise<void> {
   const acl = new Parse.ACL();
   acl.setPublicReadAccess(true);
 
   const query = new Parse.Query(Parse.Role);
-  query.equalTo("name", role.admin);
-  let adminRole = await query.first({ useMasterKey: true });
-  if (!adminRole) {
-    adminRole = new Parse.Role(role.admin, acl);
+  query.equalTo("name", roleName);
+  let parseRole = await query.first({ useMasterKey: true });
+  if (!parseRole) {
+    parseRole = new Parse.Role(roleName, acl);
   }
-  adminRole.getUsers().add(user);
-  await adminRole.save(null, { useMasterKey: true });
+  parseRole.getUsers().add(user);
+  await parseRole.save(null, { useMasterKey: true });
 }
 
 export interface CreateCaptionerInput {
@@ -69,8 +91,14 @@ export async function createCaptioner({
   verified = false,
   banned = false,
 }: CreateCaptionerInput): Promise<Parse.Object<Parse.Attributes>> {
-  const Captioner = Parse.Object.extend(PARSE_CLASS.captioner);
-  const captioner = new Captioner();
+  // Users get an empty captioner record when they sign up, fill that in
+  const query = new Parse.Query(PARSE_CLASS.captioner);
+  query.equalTo("userId", userId);
+  let captioner = await query.first({ useMasterKey: true });
+  if (!captioner) {
+    const Captioner = Parse.Object.extend(PARSE_CLASS.captioner);
+    captioner = new Captioner() as Parse.Object<Parse.Attributes>;
+  }
   captioner.set("userId", userId);
   captioner.set("name", name);
   captioner.set("verified", verified);
@@ -134,10 +162,10 @@ export async function createCaption({
 }
 
 export async function resetCollections(): Promise<void> {
-  // Captioners go first so the caption afterDelete hook has no counts to
-  // update while the captions are being cleared
   const classes = [
     PARSE_CLASS.captioner,
+    PARSE_CLASS.captionerPrivate,
+    PARSE_CLASS.captionLikes,
     PARSE_CLASS.captions,
     PARSE_CLASS.videos,
     "_User",

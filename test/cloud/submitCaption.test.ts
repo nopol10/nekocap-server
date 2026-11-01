@@ -16,7 +16,7 @@ import {
   createVideo,
   resetCollections,
 } from "../helpers/fixtures";
-import { invokeCloudFunction } from "../helpers/invoke-cloud-function";
+import { TRANSPORTS, invokeApi } from "../helpers/invoke-api";
 import {
   MongoUnavailableError,
   startParseServer,
@@ -87,7 +87,7 @@ const findCaptions = async (): Promise<Parse.Object<Parse.Attributes>[]> => {
   return query.find({ useMasterKey: true });
 };
 
-describe("submitCaption cloud function", () => {
+describe.each(TRANSPORTS)("submitCaption via %s", (transport) => {
   beforeAll(async () => {
     try {
       await startParseServer();
@@ -124,7 +124,8 @@ describe("submitCaption cloud function", () => {
     skipIfNoServer(ctx);
     const { sessionToken } = await createSubmitter("submitter-no-raw");
 
-    const res = await invokeCloudFunction<UploadResponse>(
+    const res = await invokeApi<UploadResponse>(
+      transport,
       "submitCaption",
       makeSubmitParams(),
       { sessionToken },
@@ -142,7 +143,8 @@ describe("submitCaption cloud function", () => {
     // The web editor has no raw caption to send, so it used to send an empty
     // object. Storing that as a file fails with "Invalid file upload." after
     // the caption itself has already been saved
-    const res = await invokeCloudFunction<UploadResponse>(
+    const res = await invokeApi<UploadResponse>(
+      transport,
       "submitCaption",
       makeSubmitParams({ rawCaption: {} }),
       { sessionToken },
@@ -163,7 +165,8 @@ describe("submitCaption cloud function", () => {
 
     // Raws are only stored for ass captions, so an srt raw caption has nothing
     // to upload
-    const res = await invokeCloudFunction<UploadResponse>(
+    const res = await invokeApi<UploadResponse>(
+      transport,
       "submitCaption",
       makeSubmitParams({
         rawCaption: { type: "srt", data: compressToBase64("1\nsomething\n") },
@@ -181,7 +184,8 @@ describe("submitCaption cloud function", () => {
     skipIfNoServer(ctx);
     const { sessionToken } = await createSubmitter("submitter-ass-raw");
 
-    const res = await invokeCloudFunction<UploadResponse>(
+    const res = await invokeApi<UploadResponse>(
+      transport,
       "submitCaption",
       makeSubmitParams({
         rawCaption: { type: "ass", data: compressToBase64(ASS_FILE) },
@@ -203,7 +207,8 @@ describe("submitCaption cloud function", () => {
     skipIfNoServer(ctx);
     const { sessionToken } = await createSubmitter("submitter-invalid-ass");
 
-    const res = await invokeCloudFunction<UploadResponse>(
+    const res = await invokeApi<UploadResponse>(
+      transport,
       "submitCaption",
       makeSubmitParams({
         rawCaption: { type: "ass", data: compressToBase64("not an ass file") },

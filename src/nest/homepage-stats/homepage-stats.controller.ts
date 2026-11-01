@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode } from "@nestjs/common";
+import { Controller, Get, HttpCode, Inject } from "@nestjs/common";
 import {
   HomepageStatsPayload,
   HomepageStatsService,
@@ -6,7 +6,10 @@ import {
 
 @Controller("homepage-stats")
 export class HomepageStatsController {
-  constructor(private readonly service: HomepageStatsService) {}
+  constructor(
+    @Inject(HomepageStatsService)
+    private readonly service: HomepageStatsService,
+  ) {}
 
   @Get()
   @HttpCode(200)
